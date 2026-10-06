@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TrailEar: offline bird-call companion</title>
+<style>
+:root{--bg:#f2f5f1;--fg:#17211c;--mute:#52605a;--rule:#cfd8d1;--code:#e5ebe6;--acc:#1f5c43;--hi:#b7791f}
+@media (prefers-color-scheme:dark){:root{--bg:#121a16;--fg:#e4ece6;--mute:#9aa9a0;--rule:#2b3a32;--code:#1b2620;--acc:#7cc9a1;--hi:#e0a84a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:860px;margin:0 auto;padding:40px 20px 80px}
+h1,h2,h3{font-family:Georgia,"Iowan Old Style",serif;line-height:1.2}
+h1{font-size:2.4rem;margin:0 0 6px}
+h2{font-size:1.5rem;margin:48px 0 12px;padding-top:20px;border-top:2px solid var(--acc)}
+h3{font-size:1.1rem;margin:26px 0 6px}
+p,li{max-width:72ch}
+a{color:var(--acc)}
+.lede{color:var(--mute);font-size:1.1rem;margin:0 0 24px}
+.agent{border-left:5px solid var(--hi);background:var(--code);padding:14px 18px;margin:20px 0}
+.agent h2{margin:0 0 8px;padding:0;border:0;font-size:1.2rem}
+pre,code{font-family:ui-monospace,Consolas,"Cascadia Mono",monospace;font-size:.88rem}
+pre{background:var(--code);padding:14px 16px;overflow-x:auto;border-radius:4px;line-height:1.45;margin:12px 0}
+:not(pre)>code{background:var(--code);padding:1px 5px;border-radius:3px}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.94rem}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{border-bottom:2px solid var(--acc)}
+nav{margin:18px 0;padding:12px 16px;border:1px solid var(--rule);font-size:.92rem}
+nav a{margin-right:14px;white-space:nowrap}
+.ok{color:var(--acc);font-weight:600}
+</style>
+</head>
+<body>
+<main>
+
+<h1>TrailEar</h1>
+<p class="lede">An offline bird-call companion. Walk with earbuds in and the laptop in your bag: it identifies birds locally, whispers their names, and writes a field journal when you get home. Built for the HackOctober "Touch Grass" challenge.</p>
+
+<div class="agent">
+<h2>Instructions for the coding agent</h2>
+<p>Build this entire repository in one pass from this document. Follow these rules:</p>
+<ul>
+<li>Create every file in the folder structure (section 5). No placeholders marked TODO in core paths (<code>audio</code>, <code>classify</code>, <code>detect</code>, <code>storage</code>, <code>voice</code>, <code>llm</code>, <code>api</code>).</li>
+<li>Target Windows 10/11, Python 3.11. Use <code>pathlib</code>, no bash-only commands. Setup must run from PowerShell.</li>
+<li>Everything runs locally with no network after setup. No cloud APIs, no API keys, no telemetry.</li>
+<li>Every external model sits behind an abstract interface (section 6) so it can be swapped via <code>config.yaml</code>.</li>
+<li>Ship a <code>MockClassifier</code> and a <code>MockLLM</code> so the app and tests run even if BirdNET, TensorFlow or Ollama fail to install.</li>
+<li>The LLM never identifies birds. It only writes prose from rows in SQLite (section 8).</li>
+<li>Run the tests at the end, fix failures, and finish with a short summary of what works and what is untested.</li>
+</ul>
+</div>
+
+<nav>
+<a href="#why">Why open</a><a href="#stack">Stack</a><a href="#arch">Architecture</a><a href="#tree">Folders</a><a href="#modules">Modules</a><a href="#config">Config</a><a href="#db">Database</a><a href="#api">API</a><a href="#pocket">Pocket mode</a><a href="#phases">Build order</a><a href="#setup">Setup</a><a href="#tests">Tests</a><a href="#done">Done</a>
+</nav>
+
+<h2 id="why">1. What it does and why open matters</h2>
+<p><strong>Flow:</strong> microphone, then 3-second audio windows, then an open-weight bird classifier, then a debounce step, then SQLite and a spoken name in your earbuds. After the walk, a local LLM turns your detections into a short journal entry.</p>
+<table>
+<tr><th>Open advantage</th><th>How TrailEar shows it</th></tr>
+<tr><td>Works with no signal</td><td>Birds live where there is no coverage. Everything runs offline; the demo is recorded in airplane mode.</td></tr>
+<tr><td>Data stays yours</td><td>Raw audio is processed in memory and never uploaded. Optional clip saving is off by default.</td></tr>
+<tr><td>Swap models freely</td><td>Classifier, LLM and TTS voice are config values. Use a bigger LLM at home and a smaller one on the trail.</td></tr>
+<tr><td>Zero running cost</td><td>No keys, no per-call fees, no subscription.</td></tr>
+</table>
+<p><strong>Licence note to include in the README:</strong> BirdNET model weights are licensed for non-commercial use. Google's Perch is a more permissive alternative and should be listed as a planned second <code>Classifier</code> backend.</p>
+
+<h2 id="stack">2. Tech stack</h2>
+<div class="tw"><table>
+<tr><th>Layer</th><th>Choice</th><th>Notes</th></tr>
+<tr><td>Language</td><td>Python 3.11</td><td>Managed with <code>pyproject.toml</code>, venv in <code>.venv</code></td></tr>
+<tr><td>Audio capture</td><td><code>sounddevice</code>, <code>numpy</code>, <code>soundfile</code></td><td>Mic stream and WAV file input</td></tr>
+<tr><td>Classifier</td><td><code>birdnetlib</code> (BirdNET, TFLite)</td><td>Supports lat, lon and week-of-year species filtering</td></tr>
+<tr><td>Local LLM</td><td>Ollama, default <code>qwen2.5:3b</code></td><td>Python <code>ollama</code> client; any pulled model works</td></tr>
+<tr><td>TTS</td><td><code>piper-tts</code> with a downloaded <code>.onnx</code> voice</td><td>Fully offline, plays through <code>sounddevice</code></td></tr>
+<tr><td>Storage</td><td>SQLite via stdlib <code>sqlite3</code></td><td>Two files: species facts and walk log</td></tr>
+<tr><td>Backend</td><td>FastAPI, uvicorn, WebSocket</td><td>Serves the PWA and live detections</td></tr>
+<tr><td>Frontend</td><td>Plain HTML, CSS, JS PWA</td><td>Service worker for offline use, no build step</td></tr>
+<tr><td>Quality</td><td><code>pytest</code>, <code>ruff</code>, <code>pydantic</code></td><td>Config validation and typed models</td></tr>
+</table></div>
+
+<h2 id="arch">3. Architecture</h2>
+<pre>
+ Mic / WAV file
+      |
+      v
++--------------+  3 s windows, 1 s hop  +----------------------+
+| audio/       | ---------------------> | classify/            |
+| capture.py   |                        | Classifier (BirdNET) |
+| preprocess   |                        | + location_filter    |
++--------------+                        +----------+-----------+
+                                                   | Detection(species, conf, t)
+                                                   v
+                                        +----------------------+
+                                        | detect/manager.py    |
+                                        | threshold, debounce, |
+                                        | dedupe per species   |
+                                        +-----+----------+-----+
+                                              |          |
+                               +--------------v--+   +---v-----------------+
+                               | storage/        |   | voice/tts.py        |
+                               | SQLite: walks,  |   | Piper speaks the    |
+                               | sightings,      |   | common name         |
+                               | species facts   |   +---------------------+
+                               +--------+--------+
+                                        | structured facts only
+                                        v
+                               +----------------------+
+                               | llm/ (Ollama)        |
+                               | journal + nudges     |
+                               +--------+-------------+
+                                        v
+                               +----------------------+
+                               | api/ FastAPI + WS    |
+                               | web/ PWA (offline)   |
+                               +----------------------+
+</pre>
+<h3>Runtime model</h3>
+<ul>
+<li><strong>Threads:</strong> capture thread pushes windows to a <code>queue.Queue</code>; a classifier worker consumes it; detections go to the manager, which fans out to storage, TTS and the WebSocket broadcaster. TTS runs on its own thread so speech never blocks classification.</li>
+<li><strong>Walk lifecycle:</strong> <code>start_walk()</code> creates a walk row; <code>stop_walk()</code> closes it and triggers journal generation.</li>
+<li><strong>Failure policy:</strong> if the classifier, TTS or LLM fails, log it, degrade (for example, text-only), and keep the walk running.</li>
+</ul>
+
+<h2 id="tree">4. Folder structure</h2>
+<p>Create exactly this layout.</p>
+<pre>
+trailear/
+|-- README.md                    # short markdown version of this doc
+|-- README.html                  # this file
+|-- pyproject.toml
+|-- config.yaml
+|-- .env.example
+|-- .gitignore                   # .venv, data/walks.sqlite, models/, __pycache__
+|-- scripts/
+|   |-- setup_windows.ps1
+|   |-- fetch_models.py
+|   |-- seed_species_db.py
+|   `-- demo_offline.ps1         # runs a sample WAV end to end
+|-- models/                      # gitignored: Piper voices, cached weights
+|-- data/
+|   |-- species.sqlite           # built by seed script
+|   |-- walks.sqlite             # created at runtime, gitignored
+|   |-- species_facts.json       # small curated facts (habitat, size, call note)
+|   `-- samples/                 # test WAVs
+|-- src/trailear/
+|   |-- __init__.py
+|   |-- __main__.py              # python -m trailear
+|   |-- main.py                  # CLI: walk, file, serve, journal, species
+|   |-- config.py                # pydantic settings loaded from config.yaml
+|   |-- types.py                 # Detection, Window, WalkSummary dataclasses
+|   |-- pipeline.py              # wires capture -> classify -> manager -> sinks
+|   |-- audio/
+|   |   |-- capture.py           # MicSource, FileSource
+|   |   `-- preprocess.py        # mono, resample, normalize
+|   |-- classify/
+|   |   |-- base.py              # Classifier ABC
+|   |   |-- birdnet.py
+|   |   |-- mock.py
+|   |   `-- location_filter.py   # lat/lon + week-of-year prior
+|   |-- detect/
+|   |   `-- manager.py
+|   |-- storage/
+|   |   |-- db.py
+|   |   |-- models.py
+|   |   `-- schema.sql
+|   |-- llm/
+|   |   |-- base.py              # LLM ABC
+|   |   |-- ollama_client.py
+|   |   |-- mock.py
+|   |   `-- prompts.py
+|   |-- voice/
+|   |   `-- tts.py               # Piper wrapper + NullTTS fallback
+|   `-- api/
+|       |-- server.py
+|       |-- routes.py
+|       `-- ws.py
+|-- web/
+|   |-- index.html
+|   |-- app.js
+|   |-- style.css
+|   |-- sw.js
+|   `-- manifest.json
+|-- tests/
+|   |-- test_classifier.py
+|   |-- test_manager.py
+|   |-- test_storage.py
+|   |-- test_journal_prompt.py
+|   `-- test_api.py
+|-- docs/
+|   |-- architecture.md
+|   |-- devrelay-session.md      # placeholder for the session link
+|   |-- field-test-log.md        # template for real outdoor notes
+|   `-- post-draft.md            # hackathon post skeleton
+`-- assets/                      # screenshots, airplane-mode proof, demo gif
+</pre>
+
+<h2 id="modules">5. Module contracts</h2>
+<h3>types.py</h3>
+<pre>
+@dataclass(frozen=True)
+class Window:      samples: np.ndarray; sample_rate: int; t_start: float   # seconds since walk start
+@dataclass(frozen=True)
+class Detection:   scientific_name: str; common_name: str; confidence: float; t: float
+@dataclass
+class WalkSummary: walk_id: int; started_at: str; ended_at: str; duration_s: int; species: list[dict]
+</pre>
+<h3>Interfaces</h3>
+<pre>
+class Classifier(ABC):
+    @abstractmethod
+    def classify(self, window: Window) -> list[Detection]: ...   # sorted by confidence desc
+
+class LLM(ABC):
+    @abstractmethod
+    def generate(self, system: str, prompt: str, max_tokens: int = 400) -> str: ...
+
+class TTS(ABC):
+    @abstractmethod
+    def speak(self, text: str) -> None: ...                      # non-blocking, queued
+</pre>
+<h3>Behavior rules</h3>
+<ul>
+<li><strong>capture.py:</strong> <code>MicSource</code> yields 3 s windows with a 1 s hop at 48 kHz mono (BirdNET native rate). <code>FileSource</code> reads a WAV and yields the same windows, used for tests and the demo. List input devices via <code>python -m trailear devices</code>.</li>
+<li><strong>birdnet.py:</strong> wraps <code>birdnetlib</code>; passes lat, lon and week from config; returns only detections at or above <code>min_confidence</code>. Load the model once.</li>
+<li><strong>manager.py:</strong> accept a detection only if confidence &ge; <code>announce_threshold</code>; suppress the same species for <code>cooldown_s</code>; require <code>min_consecutive</code> hits within a short span before announcing. Emit an event only for new announcements.</li>
+<li><strong>tts.py:</strong> Piper voice from <code>models/</code>; speaks the common name only (for example "Eurasian Hoopoe"). A <code>NullTTS</code> is used when disabled or when Piper is unavailable.</li>
+<li><strong>prompts.py:</strong> the journal prompt receives a JSON list of detected species with facts and counts, and must instruct: "Mention only the species provided. Do not add any other birds. If a fact is missing, leave it out." Output is 120 to 180 words, first person, calm tone.</li>
+<li><strong>Grounding check:</strong> after generation, scan the text for any known species name not in this walk's list; if found, regenerate once, then fall back to a plain template summary.</li>
+</ul>
+
+<h2 id="config">6. config.yaml</h2>
+<pre>
+location:
+  lat: 0.0              # set your own coordinates
+  lon: 0.0
+audio:
+  device: null          # null = system default input
+  sample_rate: 48000
+  window_s: 3.0
+  hop_s: 1.0
+classifier:
+  backend: birdnet      # birdnet | mock
+  min_confidence: 0.35
+  use_location_filter: true
+detect:
+  announce_threshold: 0.60
+  min_consecutive: 2
+  cooldown_s: 120
+llm:
+  backend: ollama       # ollama | mock
+  model: qwen2.5:3b
+  host: http://127.0.0.1:11434
+tts:
+  enabled: true
+  voice: en_US-lessac-medium
+pocket_mode:
+  speak_only_new_species: true
+  chime_on_rare: true
+privacy:
+  save_clips: false     # raw audio is never stored unless true
+server:
+  host: 127.0.0.1
+  port: 8000
+</pre>
+
+<h2 id="db">7. Database schema</h2>
+<p>Put this in <code>storage/schema.sql</code>. <code>species.sqlite</code> is read-only at runtime; <code>walks.sqlite</code> is the log.</p>
+<pre>
+-- species.sqlite
+CREATE TABLE species (
+  scientific_name TEXT PRIMARY KEY,
+  common_name     TEXT NOT NULL,
+  family          TEXT,
+  habitat         TEXT,
+  size_note       TEXT,
+  call_note       TEXT,
+  rarity          TEXT          -- common | uncommon | rare
+);
+
+-- walks.sqlite
+CREATE TABLE walks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  started_at TEXT NOT NULL, ended_at TEXT,
+  lat REAL, lon REAL, journal TEXT
+);
+CREATE TABLE sightings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  walk_id INTEGER NOT NULL REFERENCES walks(id),
+  scientific_name TEXT NOT NULL, common_name TEXT NOT NULL,
+  confidence REAL NOT NULL, t_offset_s REAL NOT NULL
+);
+CREATE INDEX idx_sightings_walk ON sightings(walk_id);
+</pre>
+<p><code>seed_species_db.py</code> builds <code>species.sqlite</code> from the BirdNET label list (scientific and common names) and merges <code>data/species_facts.json</code> where available. Ship 20 to 30 curated entries in that JSON for common species.</p>
+
+<h2 id="api">8. API and CLI</h2>
+<div class="tw"><table>
+<tr><th>Method</th><th>Path</th><th>Purpose</th></tr>
+<tr><td>POST</td><td><code>/api/walks/start</code></td><td>Start a walk, returns <code>walk_id</code></td></tr>
+<tr><td>POST</td><td><code>/api/walks/{id}/stop</code></td><td>End walk and generate journal</td></tr>
+<tr><td>GET</td><td><code>/api/walks</code></td><td>List past walks</td></tr>
+<tr><td>GET</td><td><code>/api/walks/{id}</code></td><td>Walk detail, sightings, journal</td></tr>
+<tr><td>GET</td><td><code>/api/lifelist</code></td><td>All species ever detected, first-seen date, count</td></tr>
+<tr><td>GET</td><td><code>/api/health</code></td><td>Reports classifier, LLM and TTS status</td></tr>
+<tr><td>WS</td><td><code>/ws/live</code></td><td>Pushes <code>{"type":"detection","common_name":"...","confidence":0.82,"t":41.0}</code></td></tr>
+</table></div>
+<p><strong>CLI</strong> (<code>python -m trailear ...</code>): <code>walk</code> (live mic, pocket mode), <code>file PATH.wav</code> (offline test), <code>serve</code> (API and PWA), <code>journal WALK_ID</code>, <code>devices</code>, <code>species SEARCH</code>.</p>
+<h3>PWA requirements</h3>
+<ul>
+<li>Three views: live feed, life list, walk summary with journal text.</li>
+<li>Service worker caches all static assets so the page loads with Wi-Fi off.</li>
+<li>Big start and stop button, high contrast, usable in sunlight.</li>
+</ul>
+
+<h2 id="pocket">9. Pocket mode (the touch-grass feature)</h2>
+<ul>
+<li><code>python -m trailear walk --pocket</code> starts capture with no UI required.</li>
+<li>Speaks "Walk started", then each newly announced species once. Optional short chime when a species is marked rare.</li>
+<li>Stops cleanly on Ctrl+C or a configurable "stop" keypress, speaks the count of species heard, and saves the walk.</li>
+<li>Journal generation happens after stop and can run later with <code>journal WALK_ID</code>.</li>
+</ul>
+
+<h2 id="phases">10. Build order and acceptance</h2>
+<div class="tw"><table>
+<tr><th>Phase</th><th>Build</th><th>Accepted when</th></tr>
+<tr><td>1</td><td>Config, types, FileSource, BirdNET and Mock classifiers, <code>file</code> command</td><td>Sample WAV prints species with confidences</td></tr>
+<tr><td>2</td><td>Location filter, manager, SQLite, seed script</td><td>No duplicate spam; walk persists</td></tr>
+<tr><td>3</td><td>MicSource, Piper TTS, pocket mode</td><td>Names are spoken for a live mic or a looped WAV</td></tr>
+<tr><td>4</td><td>Ollama client, prompts, grounding check</td><td>Journal mentions only detected species</td></tr>
+<tr><td>5</td><td>FastAPI, WebSocket, PWA</td><td>All views work with network disabled</td></tr>
+<tr><td>6</td><td>Docs: architecture, field-test template, post draft</td><td>Templates filled with real structure, human fills in results</td></tr>
+</table></div>
+
+<h2 id="setup">11. Windows setup script</h2>
+<p><code>scripts/setup_windows.ps1</code> must, in order, with clear status messages and non-zero exit on hard failure:</p>
+<ol>
+<li>Check Python 3.11 is available; create <code>.venv</code> and activate it.</li>
+<li><code>pip install -e .[dev]</code>.</li>
+<li>Check <code>ollama</code> is on PATH; if present, run <code>ollama pull qwen2.5:3b</code>; if not, print the install link and continue using the mock LLM.</li>
+<li>Run <code>fetch_models.py</code> to download the BirdNET model and the Piper voice into <code>models/</code>.</li>
+<li>Run <code>seed_species_db.py</code>.</li>
+<li>Run <code>pytest -q</code> and print the result.</li>
+<li>Print the next commands: <code>python -m trailear file data/samples/sample.wav</code> and <code>python -m trailear serve</code>.</li>
+</ol>
+<p><code>scripts/demo_offline.ps1</code> runs a sample WAV through the whole pipeline and prints the journal. This is the script to screen-record in airplane mode.</p>
+
+<h2 id="tests">12. Tests</h2>
+<ul>
+<li><code>test_classifier.py</code>: Mock classifier returns sorted detections; BirdNET test skipped if the model is missing.</li>
+<li><code>test_manager.py</code>: threshold, cooldown and consecutive-hit logic with synthetic detections.</li>
+<li><code>test_storage.py</code>: walk and sighting insert, life-list query, in-memory SQLite.</li>
+<li><code>test_journal_prompt.py</code>: prompt contains only provided species; grounding check rejects an invented species and falls back to the template.</li>
+<li><code>test_api.py</code>: FastAPI test client covers start, stop, walks list and health.</li>
+</ul>
+
+<h2 id="done">13. Definition of done</h2>
+<ul>
+<li class="ok">Fresh clone plus <code>setup_windows.ps1</code> reaches a working demo in under 10 minutes.</li>
+<li class="ok">The full pipeline runs with network disabled.</li>
+<li class="ok">Every model is swappable through <code>config.yaml</code> only.</li>
+<li class="ok">Tests pass, <code>ruff</code> is clean.</li>
+<li class="ok"><code>README.md</code> includes the "why open" table, the licence note, a quick start, and a clear list of known limitations.</li>
+</ul>
+<h3>Left for the human (do not fake these)</h3>
+<ul>
+<li>Real outdoor field test and honest accuracy notes in <code>docs/field-test-log.md</code>.</li>
+<li>Airplane-mode screenshot or gif in <code>assets/</code>.</li>
+<li>DevRelay session link in <code>docs/devrelay-session.md</code> and the final post.</li>
+</ul>
+
+</main>
+</body>
+</html>
