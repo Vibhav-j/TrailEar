@@ -42,8 +42,14 @@ class BirdNETClassifier(Classifier):
         verbose: bool = False,
     ) -> None:
         self._analyzer: Analyzer | None = None
-        self._min_confidence = min_confidence or config.classifier.min_confidence
+        self._custom_min_confidence = min_confidence
         self._verbose = verbose
+
+    @property
+    def min_confidence(self) -> float:
+        if self._custom_min_confidence is not None:
+            return self._custom_min_confidence
+        return config.classifier.min_confidence
 
     def _get_analyzer(self) -> Analyzer:
         if self._analyzer is None:
@@ -72,7 +78,7 @@ class BirdNETClassifier(Classifier):
             now = datetime.datetime.now(datetime.UTC)
 
             recording_kwargs: dict[str, Any] = {
-                "min_conf": 0.0 if self._verbose else self._min_confidence,
+                "min_conf": 0.0 if self._verbose else self.min_confidence,
                 "return_all_detections": bool(self._verbose),
             }
             if config.classifier.use_location_filter:
@@ -101,9 +107,9 @@ class BirdNETClassifier(Classifier):
                     top_conf = float(top.get("confidence", 0.0))
                     is_regional = top.get("is_predicted_for_location_and_date", True)
 
-                    if top_conf < self._min_confidence:
+                    if top_conf < self.min_confidence:
                         status = (
-                            f"Discarded: Confidence {top_conf:.2f} < {self._min_confidence:.2f}"
+                            f"Discarded: Confidence {top_conf:.2f} < {self.min_confidence:.2f}"
                         )
                     elif config.classifier.use_location_filter and not is_regional:
                         status = "Discarded: Not in regional filter"
@@ -112,7 +118,7 @@ class BirdNETClassifier(Classifier):
                 else:
                     top_name = "None"
                     top_conf = 0.0
-                    status = f"Discarded: Confidence 0.00 < {self._min_confidence:.2f}"
+                    status = f"Discarded: Confidence 0.00 < {self.min_confidence:.2f}"
 
                 print(
                     f"  [RAW] t={window.t_start:.1f}s | Top: {top_name} | "
@@ -122,7 +128,7 @@ class BirdNETClassifier(Classifier):
                 accepted = [
                     d
                     for d in raw_detections
-                    if float(d.get("confidence", 0.0)) >= self._min_confidence
+                    if float(d.get("confidence", 0.0)) >= self.min_confidence
                     and (
                         not config.classifier.use_location_filter
                         or d.get("is_predicted_for_location_and_date", True)

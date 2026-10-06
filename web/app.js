@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let wsReconnectTimer = null;
   let detectionCount = 0;
 
-  // DOM Elements
+  // DOM Elements - Main App
   const statusBadge = document.getElementById('statusBadge');
   const statusText = document.getElementById('statusText');
   const walkBtn = document.getElementById('walkToggleBtn');
@@ -26,6 +26,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const lifeListTotal = document.getElementById('lifeListTotal');
   const walksList = document.getElementById('walksList');
   const walksCount = document.getElementById('walksCount');
+
+  // DOM Elements - Settings & Location
+  const settingsModal = document.getElementById('settingsModal');
+  const headerSettingsBtn = document.getElementById('headerSettingsBtn');
+  const openSettingsBtn = document.getElementById('openSettingsBtn');
+  const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+  const settingsForm = document.getElementById('settingsForm');
+  const locationFilterToggle = document.getElementById('locationFilterToggle');
+  const latitudeInput = document.getElementById('latitudeInput');
+  const longitudeInput = document.getElementById('longitudeInput');
+  const minConfidenceInput = document.getElementById('minConfidenceInput');
+  const fetchLocationBtn = document.getElementById('fetchLocationBtn');
+  const quickLocBtn = document.getElementById('quickLocBtn');
+  const locationSummaryText = document.getElementById('locationSummaryText');
+  const toastContainer = document.getElementById('toastContainer');
 
   // --- Tab Navigation ---
   tabButtons.forEach((btn) => {
@@ -47,6 +62,229 @@ document.addEventListener('DOMContentLoaded', () => {
   function setStatus(text, stateClass) {
     statusText.textContent = text;
     statusBadge.className = 'status-badge ' + (stateClass || '');
+  }
+
+  // --- Toast Notifications ---
+  function showToast(message, type = 'info', durationMs = 4000) {
+    if (!toastContainer) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+
+    toastContainer.appendChild(toast);
+
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(10px)';
+      setTimeout(() => {
+        if (toast.parentNode) {
+          toast.parentNode.removeChild(toast);
+        }
+      }, 300);
+    }, durationMs);
+  }
+
+  // --- Settings & Location API ---
+  function updateSettingsUI(settings) {
+    if (!settings) return;
+
+    const useFilter = Boolean(settings.use_location_filter);
+    const lat = typeof settings.latitude === 'number' ? settings.latitude : (settings.lat || 0.0);
+    const lon = typeof settings.longitude === 'number' ? settings.longitude : (settings.lon || 0.0);
+    const minConf = typeof settings.min_confidence === 'number' ? settings.min_confidence : 0.35;
+
+    if (locationFilterToggle) locationFilterToggle.checked = useFilter;
+    if (latitudeInput) latitudeInput.value = lat.toFixed(4);
+    if (longitudeInput) longitudeInput.value = lon.toFixed(4);
+    if (minConfidenceInput) minConfidenceInput.value = minConf.toFixed(2);
+
+    if (locationSummaryText) {
+      const filterLabel = useFilter ? 'Filter ON' : 'Filter OFF';
+      locationSummaryText.textContent = `Location: ${lat.toFixed(4)}, ${lon.toFixed(4)} (${filterLabel})`;
+    }
+  }
+
+  async function loadSettings() {
+    try {
+      const res = await fetch('/api/settings');
+      if (res.ok) {
+        const data = await res.json();
+        updateSettingsUI(data);
+      }
+    } catch (err) {
+      console.warn('Failed to load settings from server:', err);
+    }
+  }
+
+  async function saveSettings(showNotification = true) {
+    const lat = parseFloat(latitudeInput.value);
+    const lon = parseFloat(longitudeInput.value);
+    const useFilter = locationFilterToggle.checked;
+    const minConf = parseFloat(minConfidenceInput.value);
+
+    if (isNaN(lat) || isNaN(lon)) {
+      showToast('⚠️ Please enter valid numeric latitude and longitude', 'error');
+      return false;
+    }
+
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          use_location_filter: useFilter,
+          latitude: lat,
+          longitude: lon,
+          min_confidence: isNaN(minConf) ? 0.35 : minConf,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        updateSettingsUI(data);
+        if (showNotification) {
+          showToast('Settings saved successfully', 'success');
+        }
+        return true;
+      } else {
+        showToast('Failed to save settings on server', 'error');
+        return false;
+      }
+    } catch (err) {
+      console.error('Error saving settings:', err);
+      showToast('Network error saving settings', 'error');
+      return false;
+    }
+  }
+
+  // --- Browser HTML5 Geolocation API ---
+  function fetchCurrentLocation() {
+    if (!('geolocation' in navigator)) {
+      showToast('⚠️ Geolocation is not supported by this browser', 'error');
+      return;
+    }
+
+    const btns = [fetchLocationBtn, quickLocBtn].filter(Boolean);
+    btns.forEach((b) => {
+      b.disabled = true;
+      b.dataset.origText = b.textContent;
+      b.textContent = '📍 Locating...';
+    });
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = parseFloat(position.coords.latitude.toFixed(6));
+        const lon = parseFloat(position.coords.longitude.toFixed(6));
+
+        if (latitudeInput) latitudeInput.value = lat;
+        if (longitudeInput) longitudeInput.value = lon;
+
+        // Auto-submit to POST /api/settings
+        try {
+          const res = await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              latitude: lat,
+              longitude: lon,
+              use_location_filter: locationFilterToggle ? locationFilterToggle.checked : true,
+              min_confidence: minConfidenceInput ? parseFloat(minConfidenceInput.value) : 0.35,
+            }),
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            updateSettingsUI(data);
+            showToast(`📍 Location updated: ${lat}, ${lon}`, 'success');
+          } else {
+            showToast('Failed to persist location on server', 'error');
+          }
+        } catch (err) {
+          console.error('Error persisting location:', err);
+          showToast('Network error saving location', 'error');
+        } finally {
+          btns.forEach((b) => {
+            b.disabled = false;
+            b.textContent = b.dataset.origText || '📍 GPS';
+          });
+        }
+      },
+      (error) => {
+        btns.forEach((b) => {
+          b.disabled = false;
+          b.textContent = b.dataset.origText || '📍 GPS';
+        });
+
+        let msg = 'Unable to retrieve location';
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            msg = 'Location permission denied by user';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            msg = 'Location position unavailable';
+            break;
+          case error.TIMEOUT:
+            msg = 'Location request timed out';
+            break;
+        }
+        showToast(`⚠️ ${msg}`, 'error');
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  }
+
+  // --- Modal Open & Close ---
+  function openSettings() {
+    if (settingsModal) {
+      settingsModal.classList.remove('hidden');
+    }
+  }
+
+  function closeSettings() {
+    if (settingsModal) {
+      settingsModal.classList.add('hidden');
+    }
+  }
+
+  if (headerSettingsBtn) headerSettingsBtn.addEventListener('click', openSettings);
+  if (openSettingsBtn) openSettingsBtn.addEventListener('click', openSettings);
+  if (closeSettingsBtn) closeSettingsBtn.addEventListener('click', closeSettings);
+
+  if (settingsModal) {
+    settingsModal.addEventListener('click', (e) => {
+      if (e.target === settingsModal) closeSettings();
+    });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && settingsModal && !settingsModal.classList.contains('hidden')) {
+      closeSettings();
+    }
+  });
+
+  // GPS buttons
+  if (fetchLocationBtn) fetchLocationBtn.addEventListener('click', fetchCurrentLocation);
+  if (quickLocBtn) quickLocBtn.addEventListener('click', fetchCurrentLocation);
+
+  // Form submit
+  if (settingsForm) {
+    settingsForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const ok = await saveSettings(true);
+      if (ok) closeSettings();
+    });
+  }
+
+  // Toggle switch instant persistence
+  if (locationFilterToggle) {
+    locationFilterToggle.addEventListener('change', () => {
+      saveSettings(false);
+    });
   }
 
   // --- WebSocket with Auto-Reconnect ---
@@ -101,130 +339,140 @@ document.addEventListener('DOMContentLoaded', () => {
     detectionCount++;
     detectionCounter.textContent = `${detectionCount} heard`;
 
-    // Remove empty placeholder
+    // Remove empty state if present
     const emptyState = liveFeedList.querySelector('.empty-state');
     if (emptyState) emptyState.remove();
 
-    const card = document.createElement('div');
-    card.className = 'detection-card';
-    card.innerHTML = `
-      <div class="species-info">
-        <h3>${escapeHtml(det.common_name)}</h3>
-        <div class="sci-name">${escapeHtml(det.scientific_name || '')}</div>
+    const item = document.createElement('div');
+    item.className = 'detection-card new';
+
+    const confPct = Math.round((det.confidence || 0) * 100);
+    const timeFormatted = typeof det.t === 'number' ? `${det.t.toFixed(1)}s` : '';
+
+    item.innerHTML = `
+      <div class="detection-info">
+        <span class="species-name">${escapeHtml(det.common_name)}</span>
+        <span class="species-time">${timeFormatted ? 'at ' + timeFormatted : ''}</span>
       </div>
-      <div class="meta">
-        <span class="confidence-tag">${Math.round(det.confidence * 100)}%</span>
-        <div class="time-tag">+${det.t.toFixed(1)}s</div>
-      </div>
+      <div class="confidence-badge">${confPct}%</div>
     `;
 
-    liveFeedList.prepend(card);
+    liveFeedList.prepend(item);
+
+    // Keep feed trimmed to 50 latest items
+    while (liveFeedList.children.length > 50) {
+      liveFeedList.removeChild(liveFeedList.lastChild);
+    }
   }
 
-  // --- Start / Stop Walk Lifecycle ---
+  // --- Walk Start / Stop Controls ---
   walkBtn.addEventListener('click', async () => {
-    if (!activeWalkId) {
-      // Start walk
-      try {
-        walkBtn.disabled = true;
-        const res = await fetch('/api/walks/start', { method: 'POST' });
-        const data = await res.json();
-        activeWalkId = data.walk_id;
-
-        walkBtn.textContent = 'Stop Walk';
-        walkBtn.className = 'big-btn stop';
-        setStatus(`Walk #${activeWalkId} Active`, 'active');
-
-        // Reset live feed
-        detectionCount = 0;
-        detectionCounter.textContent = '0 heard';
-        liveFeedList.innerHTML = '';
-
-        connectWebSocket();
-      } catch (err) {
-        alert('Failed to start walk: ' + err.message);
-      } finally {
-        walkBtn.disabled = false;
-      }
+    if (activeWalkId === null) {
+      await startWalkSession();
     } else {
-      // Stop walk
-      try {
-        walkBtn.disabled = true;
-        walkBtn.textContent = 'Finishing & Journaling...';
-
-        const res = await fetch(`/api/walks/${activeWalkId}/stop`, { method: 'POST' });
-        const walkData = await res.json();
-
-        const endedId = activeWalkId;
-        activeWalkId = null;
-
-        walkBtn.textContent = 'Start Walk';
-        walkBtn.className = 'big-btn start';
-        setStatus('Ready', 'connected');
-
-        // Switch to walks view and display the finished walk
-        const walksTabBtn = document.querySelector('[data-tab="walks"]');
-        if (walksTabBtn) walksTabBtn.click();
-      } catch (err) {
-        alert('Failed to stop walk: ' + err.message);
-        walkBtn.textContent = 'Stop Walk';
-      } finally {
-        walkBtn.disabled = false;
-      }
+      await stopWalkSession();
     }
   });
 
-  // --- Life List Loader ---
+  async function startWalkSession() {
+    walkBtn.disabled = true;
+    try {
+      const res = await fetch('/api/walks/start', { method: 'POST' });
+      if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
+      const data = await res.json();
+
+      activeWalkId = data.walk_id;
+      detectionCount = 0;
+      detectionCounter.textContent = '0 heard';
+      liveFeedList.innerHTML = '<div class="empty-state">Walk in progress. Listening for bird calls...</div>';
+
+      walkBtn.textContent = 'Stop Walk';
+      walkBtn.className = 'big-btn stop';
+      setStatus(`Walk #${activeWalkId} Active`, 'active');
+      showToast(`Walk #${activeWalkId} started`, 'info');
+    } catch (err) {
+      console.error('Failed to start walk:', err);
+      showToast('Failed to start walk session', 'error');
+    } finally {
+      walkBtn.disabled = false;
+    }
+  }
+
+  async function stopWalkSession() {
+    if (!activeWalkId) return;
+    walkBtn.disabled = true;
+    const walkId = activeWalkId;
+
+    try {
+      const res = await fetch(`/api/walks/${walkId}/stop`, { method: 'POST' });
+      if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
+      const data = await res.json();
+
+      activeWalkId = null;
+      walkBtn.textContent = 'Start Walk';
+      walkBtn.className = 'big-btn start';
+      setStatus('Ready', 'connected');
+      showToast(`Walk #${walkId} completed and saved`, 'success');
+
+      // Switch to Walks view to display the summary and journal
+      const walksTab = document.querySelector('[data-tab="walks"]');
+      if (walksTab) walksTab.click();
+      renderWalkSummary(data);
+    } catch (err) {
+      console.error('Failed to stop walk:', err);
+      showToast('Failed to stop walk cleanly', 'error');
+      walkBtn.disabled = false;
+    }
+  }
+
+  // --- Life List View ---
   async function loadLifeList() {
     try {
       const res = await fetch('/api/lifelist');
-      const list = await res.json();
-      lifeListTotal.textContent = `${list.length} species`;
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
 
-      if (!list || list.length === 0) {
+      lifeListTotal.textContent = `${data.length} species`;
+
+      if (data.length === 0) {
         lifeListBody.innerHTML = `
           <tr>
             <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 24px;">
-              No birds recorded yet. Take a walk to build your life list!
+              No birds recorded yet.
             </td>
           </tr>
         `;
         return;
       }
 
-      lifeListBody.innerHTML = list.map((item) => `
+      lifeListBody.innerHTML = data.map((item) => `
         <tr>
-          <td><strong>${escapeHtml(item.common_name)}</strong></td>
-          <td style="font-style: italic; color: var(--text-muted);">${escapeHtml(item.scientific_name)}</td>
-          <td><span class="badge-count">${item.count}</span></td>
-          <td style="font-size: 0.85rem; color: var(--text-muted);">${formatDate(item.first_seen)}</td>
+          <td class="primary-cell">${escapeHtml(item.common_name)}</td>
+          <td style="font-style: italic;">${escapeHtml(item.scientific_name)}</td>
+          <td><span class="count-pill">${item.count}</span></td>
+          <td>${formatDate(item.first_seen)}</td>
         </tr>
       `).join('');
     } catch (err) {
-      lifeListBody.innerHTML = `<tr><td colspan="4" style="color: var(--danger); padding: 16px;">Failed to load life list.</td></tr>`;
+      lifeListBody.innerHTML = `<tr><td colspan="4" style="color: var(--danger); text-align: center;">Failed to load life list.</td></tr>`;
     }
   }
 
-  // --- Walks Loader ---
+  // --- Walks List View ---
   async function loadWalks() {
     try {
       const res = await fetch('/api/walks');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const walks = await res.json();
+
       walksCount.textContent = `${walks.length} walks`;
 
-      if (!walks || walks.length === 0) {
-        walksList.innerHTML = `
-          <div class="empty-state">No recorded walks yet.</div>
-        `;
+      if (walks.length === 0) {
+        walksList.innerHTML = `<div class="empty-state">No completed walks saved yet.</div>`;
         return;
       }
 
-      // Fetch detail for each walk to display journal
-      const details = await Promise.all(
-        walks.map((w) => fetch(`/api/walks/${w.id}`).then((r) => r.json()).catch(() => w))
-      );
-
-      walksList.innerHTML = details.map((walk) => `
+      walksList.innerHTML = walks.map((walk) => `
         <article class="walk-card">
           <div class="walk-header">
             <h3>Walk #${walk.id}</h3>
@@ -248,6 +496,10 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       walksList.innerHTML = `<div class="empty-state" style="color: var(--danger);">Failed to load walks.</div>`;
     }
+  }
+
+  function renderWalkSummary(walk) {
+    loadWalks();
   }
 
   // --- Helpers ---
@@ -275,6 +527,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Initial connection
+  // Initialize
+  loadSettings();
   connectWebSocket();
 });

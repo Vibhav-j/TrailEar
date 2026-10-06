@@ -21,24 +21,28 @@ class MockClassifier(Classifier):
         min_confidence: float | None = None,
         verbose: bool = False,
     ) -> None:
-        self._min_confidence = (
-            min_confidence if min_confidence is not None else config.classifier.min_confidence
-        )
+        self._custom_min_confidence = min_confidence
         self._verbose = verbose
+
+    @property
+    def min_confidence(self) -> float:
+        if self._custom_min_confidence is not None:
+            return self._custom_min_confidence
+        return config.classifier.min_confidence
 
     def classify(self, window: Window) -> list[Detection]:
         """Return deterministic fake detections sorted by confidence descending."""
         if self._verbose:
             if self._FAKE_SPECIES:
                 _top_sci, top_common, top_conf = self._FAKE_SPECIES[0]
-                if top_conf < self._min_confidence:
-                    status = f"Discarded: Confidence {top_conf:.2f} < {self._min_confidence:.2f}"
+                if top_conf < self.min_confidence:
+                    status = f"Discarded: Confidence {top_conf:.2f} < {self.min_confidence:.2f}"
                 else:
                     status = "Accepted"
             else:
                 top_common = "None"
                 top_conf = 0.0
-                status = f"Discarded: Confidence 0.00 < {self._min_confidence:.2f}"
+                status = f"Discarded: Confidence 0.00 < {self.min_confidence:.2f}"
 
             print(
                 f"  [RAW] t={window.t_start:.1f}s | Top: {top_common} | "
@@ -53,5 +57,5 @@ class MockClassifier(Classifier):
                 t=window.t_start,
             )
             for sci, common, conf in self._FAKE_SPECIES
-            if conf >= self._min_confidence
+            if conf >= self.min_confidence
         ]

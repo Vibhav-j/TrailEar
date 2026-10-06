@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import yaml
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 _CONFIG_PATH = _PROJECT_ROOT / "config.yaml"
@@ -84,3 +87,49 @@ def load_config(path: Path | None = None) -> AppConfig:
 
 # Module-level singleton, loaded once on import.
 config = load_config()
+
+
+def save_config(app_config: AppConfig, path: Path | None = None) -> None:
+    """Save configuration to a YAML file."""
+    path = path or _CONFIG_PATH
+    data = app_config.model_dump()
+    with open(path, "w", encoding="utf-8") as fh:
+        yaml.safe_dump(data, fh, default_flow_style=False, sort_keys=False)
+
+
+def get_settings() -> dict:
+    """Return dictionary of current settings."""
+    return {
+        "use_location_filter": config.classifier.use_location_filter,
+        "latitude": config.location.lat,
+        "longitude": config.location.lon,
+        "lat": config.location.lat,
+        "lon": config.location.lon,
+        "min_confidence": config.classifier.min_confidence,
+    }
+
+
+def update_settings(
+    use_location_filter: bool | None = None,
+    latitude: float | None = None,
+    longitude: float | None = None,
+    min_confidence: float | None = None,
+    persist: bool = True,
+) -> dict:
+    """Update runtime configuration settings and persist to YAML."""
+    if use_location_filter is not None:
+        config.classifier.use_location_filter = bool(use_location_filter)
+    if latitude is not None:
+        config.location.lat = float(latitude)
+    if longitude is not None:
+        config.location.lon = float(longitude)
+    if min_confidence is not None:
+        config.classifier.min_confidence = float(min_confidence)
+
+    if persist and _CONFIG_PATH.exists():
+        try:
+            save_config(config, _CONFIG_PATH)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Could not persist configuration to %s: %s", _CONFIG_PATH, exc)
+
+    return get_settings()

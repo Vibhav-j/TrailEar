@@ -1,6 +1,6 @@
 location:
-  lat: 0.0
-  lon: 0.0
+  lat: 42.3601
+  lon: -71.0589
 audio:
   device: null
   sample_rate: 48000
@@ -8,10 +8,10 @@ audio:
   hop_s: 1.0
 classifier:
   backend: birdnet
-  min_confidence: 0.35
-  use_location_filter: true
+  min_confidence: 0.4
+  use_location_filter: false
 detect:
-  announce_threshold: 0.60
+  announce_threshold: 0.6
   min_consecutive: 2
   cooldown_s: 120
 llm:

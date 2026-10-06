@@ -7,6 +7,7 @@ import threading
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel
 
 from trailear.api.ws import make_ws_sink, ws_manager
 from trailear.config import config
@@ -203,6 +204,42 @@ def api_health() -> dict:
         "llm": llm_status,
         "tts": tts_status,
     }
+
+
+class SettingsUpdateRequest(BaseModel):
+    """Payload for updating runtime location and classifier settings."""
+
+    use_location_filter: bool | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    lat: float | None = None
+    lon: float | None = None
+    min_confidence: float | None = None
+
+
+@router.get("/api/settings")
+def api_get_settings() -> dict:
+    """Retrieve current runtime configuration settings."""
+    from trailear.config import get_settings
+
+    return get_settings()
+
+
+@router.post("/api/settings")
+@router.put("/api/settings")
+def api_update_settings(payload: SettingsUpdateRequest) -> dict:
+    """Update runtime settings for location coordinates and filters."""
+    from trailear.config import update_settings
+
+    lat = payload.latitude if payload.latitude is not None else payload.lat
+    lon = payload.longitude if payload.longitude is not None else payload.lon
+
+    return update_settings(
+        use_location_filter=payload.use_location_filter,
+        latitude=lat,
+        longitude=lon,
+        min_confidence=payload.min_confidence,
+    )
 
 
 @router.websocket("/ws/live")

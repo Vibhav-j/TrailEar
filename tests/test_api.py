@@ -109,3 +109,48 @@ class TestAPIEndpoints:
 
         resp_sw = client.get("/sw.js")
         assert resp_sw.status_code == 200
+
+    def test_get_settings(self, client):
+        resp = client.get("/api/settings")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "use_location_filter" in data
+        assert "latitude" in data
+        assert "longitude" in data
+        assert "min_confidence" in data
+
+    def test_update_settings_post(self, client):
+        payload = {
+            "use_location_filter": False,
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "min_confidence": 0.42,
+        }
+        resp = client.post("/api/settings", json=payload)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["use_location_filter"] is False
+        assert data["latitude"] == 37.7749
+        assert data["longitude"] == -122.4194
+        assert data["min_confidence"] == 0.42
+
+        # Verify persistent read
+        resp_get = client.get("/api/settings")
+        assert resp_get.status_code == 200
+        get_data = resp_get.json()
+        assert get_data["use_location_filter"] is False
+        assert get_data["latitude"] == 37.7749
+        assert get_data["longitude"] == -122.4194
+
+    def test_update_settings_put(self, client):
+        payload = {
+            "use_location_filter": True,
+            "lat": 51.5074,
+            "lon": -0.1278,
+        }
+        resp = client.put("/api/settings", json=payload)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["use_location_filter"] is True
+        assert data["latitude"] == 51.5074
+        assert data["longitude"] == -0.1278
