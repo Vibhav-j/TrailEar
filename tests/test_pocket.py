@@ -135,3 +135,20 @@ class TestPocketMode:
         assert isinstance(chime, np.ndarray)
         assert len(chime) == int(44100 * 0.2)
         assert np.max(np.abs(chime)) <= 1.0
+
+    def test_walk_cli_verbose_flags(self):
+        from trailear.main import build_parser
+
+        parser = build_parser()
+
+        # Default is not verbose
+        args_default = parser.parse_args(["walk"])
+        assert args_default.verbose is False
+
+        # -v flag
+        args_short = parser.parse_args(["walk", "-v"])
+        assert args_short.verbose is True
+
+        # --verbose flag
+        args_long = parser.parse_args(["walk", "--verbose"])
+        assert args_long.verbose is True

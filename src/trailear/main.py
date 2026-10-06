@@ -8,14 +8,14 @@ import time
 from pathlib import Path
 
 
-def _get_classifier():
+def _get_classifier(verbose: bool = False):
     """Get the appropriate classifier based on config."""
     from trailear.config import config
 
     if config.classifier.backend == "mock":
         from trailear.classify.mock import MockClassifier
 
-        return MockClassifier()
+        return MockClassifier(verbose=verbose)
 
     # Try BirdNET, fall back to mock
     try:
@@ -25,18 +25,18 @@ def _get_classifier():
             print("[INFO] birdnetlib not installed, falling back to MockClassifier")
             from trailear.classify.mock import MockClassifier
 
-            return MockClassifier()
-        return BirdNETClassifier()
+            return MockClassifier(verbose=verbose)
+        return BirdNETClassifier(verbose=verbose)
     except (ImportError, ModuleNotFoundError):
         print("[INFO] birdnetlib not installed, falling back to MockClassifier")
         from trailear.classify.mock import MockClassifier
 
-        return MockClassifier()
+        return MockClassifier(verbose=verbose)
     except Exception as exc:  # noqa: BLE001
         print(f"[INFO] BirdNET unavailable ({exc}), falling back to MockClassifier")
         from trailear.classify.mock import MockClassifier
 
-        return MockClassifier()
+        return MockClassifier(verbose=verbose)
 
 
 def cmd_file(path: str) -> None:
@@ -86,7 +86,11 @@ def cmd_file(path: str) -> None:
     )
 
 
-def cmd_walk(pocket: bool = False, file_path: str | None = None) -> None:
+def cmd_walk(
+    pocket: bool = False,
+    file_path: str | None = None,
+    verbose: bool = False,
+) -> None:
     """Start a walk session in live mic mode or simulated file mode."""
     from trailear.config import config
     from trailear.detect.manager import DetectionManager
@@ -113,7 +117,7 @@ def cmd_walk(pocket: bool = False, file_path: str | None = None) -> None:
             sys.exit(1)
         is_live = True
 
-    classifier = _get_classifier()
+    classifier = _get_classifier(verbose=verbose)
     tts = get_tts()
 
     walk_id = start_walk(lat=config.location.lat, lon=config.location.lon)
@@ -122,11 +126,18 @@ def cmd_walk(pocket: bool = False, file_path: str | None = None) -> None:
     tts.speak("Walk started")
 
     mode_label = "Pocket Mode" if pocket else "Walk Mode"
+    if verbose:
+        mode_label += " (Verbose)"
     print(f"\n=== TrailEar {mode_label} (Walk #{walk_id}) ===")
     if is_live:
         print("Listening via microphone... (Press Ctrl+C to stop)")
     else:
         print(f"Processing audio from {file_path}... (Press Ctrl+C to stop)")
+    if verbose:
+        print(
+            f"Verbose chunk logging enabled (min_confidence={config.classifier.min_confidence:.2f}, "
+            f"location_filter={config.classifier.use_location_filter})"
+        )
 
     storage_sink = make_storage_sink(walk_id)
     tts_sink = make_tts_sink(
@@ -271,8 +282,8 @@ def cmd_serve(host: str | None = None, port: int | None = None) -> None:
     run_server(host=host, port=port)
 
 
-def main() -> None:
-    """Main CLI entry point."""
+def build_parser() -> argparse.ArgumentParser:
+    """Build the CLI argument parser."""
     parser = argparse.ArgumentParser(
         prog="trailear",
         description="TrailEar: offline bird-call companion",
@@ -291,6 +302,12 @@ def main() -> None:
     walk_parser.add_argument(
         "--file", type=str, default=None, help="Process a WAV file instead of live microphone"
     )
+    walk_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Print raw classification and filter status for each audio chunk",
+    )
 
     # devices command
     sub.add_parser("devices", help="List audio input devices")
@@ -308,12 +325,18 @@ def main() -> None:
     journal_parser = sub.add_parser("journal", help="Generate a journal (Phase 4)")
     journal_parser.add_argument("walk_id", type=int, help="Walk ID")
 
+    return parser
+
+
+def main() -> None:
+    """Main CLI entry point."""
+    parser = build_parser()
     args = parser.parse_args()
 
     if args.command == "file":
         cmd_file(args.path)
     elif args.command == "walk":
-        cmd_walk(pocket=args.pocket, file_path=args.file)
+        cmd_walk(pocket=args.pocket, file_path=args.file, verbose=args.verbose)
     elif args.command == "devices":
         cmd_devices()
     elif args.command == "species":

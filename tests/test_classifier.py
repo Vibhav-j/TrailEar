@@ -52,6 +52,25 @@ class TestMockClassifier:
             assert a.common_name == b.common_name
             assert a.confidence == b.confidence
 
+    def test_verbose_logging(self, capsys):
+        clf = MockClassifier(verbose=True)
+        window = _make_window()
+        results = clf.classify(window)
+        assert len(results) > 0
+        captured = capsys.readouterr()
+        assert "[RAW]" in captured.out
+        assert "Top: Eurasian Blackbird" in captured.out
+        assert "Confidence: 0.92" in captured.out
+        assert "Accepted" in captured.out
+
+    def test_non_verbose_logging_is_silent(self, capsys):
+        clf = MockClassifier(verbose=False)
+        window = _make_window()
+        results = clf.classify(window)
+        assert len(results) > 0
+        captured = capsys.readouterr()
+        assert "[RAW]" not in captured.out
+
 
 class TestBirdNETClassifier:
     @pytest.fixture(autouse=True)
@@ -78,6 +97,27 @@ class TestBirdNETClassifier:
         if results:
             confidences = [d.confidence for d in results]
             assert confidences == sorted(confidences, reverse=True)
+
+    def test_verbose_logging(self, capsys):
+        from trailear.classify.birdnet import BirdNETClassifier
+
+        clf = BirdNETClassifier(min_confidence=0.5, verbose=True)
+        window = _make_window()
+        clf.classify(window)
+        captured = capsys.readouterr()
+        assert "[RAW]" in captured.out
+        assert "Top:" in captured.out
+        assert "Confidence:" in captured.out
+        assert "Status:" in captured.out
+
+    def test_non_verbose_does_not_print_raw(self, capsys):
+        from trailear.classify.birdnet import BirdNETClassifier
+
+        clf = BirdNETClassifier(min_confidence=0.5, verbose=False)
+        window = _make_window()
+        clf.classify(window)
+        captured = capsys.readouterr()
+        assert "[RAW]" not in captured.out
 
 
 class TestLocationFilter:

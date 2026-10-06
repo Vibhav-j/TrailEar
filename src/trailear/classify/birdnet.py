@@ -6,7 +6,7 @@ import datetime
 import tempfile
 import wave
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -36,9 +36,14 @@ class BirdNETClassifier(Classifier):
     min_confidence.
     """
 
-    def __init__(self, min_confidence: float | None = None) -> None:
+    def __init__(
+        self,
+        min_confidence: float | None = None,
+        verbose: bool = False,
+    ) -> None:
         self._analyzer: Analyzer | None = None
         self._min_confidence = min_confidence or config.classifier.min_confidence
+        self._verbose = verbose
 
     def _get_analyzer(self) -> Analyzer:
         if self._analyzer is None:
@@ -64,18 +69,16 @@ class BirdNETClassifier(Classifier):
                 pcm = (window.samples * 32767).astype(np.int16)
                 wf.writeframes(pcm.tobytes())
 
-            from trailear.classify.location_filter import date_to_birdnet_week
-
             now = datetime.datetime.now(datetime.UTC)
-            week = date_to_birdnet_week(now)
 
-            recording_kwargs = {
-                "min_conf": self._min_confidence,
+            recording_kwargs: dict[str, Any] = {
+                "min_conf": 0.0 if self._verbose else self._min_confidence,
+                "return_all_detections": bool(self._verbose),
             }
             if config.classifier.use_location_filter:
                 recording_kwargs["lat"] = config.location.lat
                 recording_kwargs["lon"] = config.location.lon
-                recording_kwargs["week"] = week
+                recording_kwargs["date"] = now
 
             recording = Recording(
                 analyzer,
@@ -84,14 +87,58 @@ class BirdNETClassifier(Classifier):
             )
             recording.analyze()
 
+            raw_detections = recording.detections
+
+            if self._verbose:
+                if raw_detections:
+                    raw_sorted = sorted(
+                        raw_detections,
+                        key=lambda d: float(d.get("confidence", 0.0)),
+                        reverse=True,
+                    )
+                    top = raw_sorted[0]
+                    top_name = top.get("common_name") or top.get("scientific_name") or "Unknown"
+                    top_conf = float(top.get("confidence", 0.0))
+                    is_regional = top.get("is_predicted_for_location_and_date", True)
+
+                    if top_conf < self._min_confidence:
+                        status = (
+                            f"Discarded: Confidence {top_conf:.2f} < {self._min_confidence:.2f}"
+                        )
+                    elif config.classifier.use_location_filter and not is_regional:
+                        status = "Discarded: Not in regional filter"
+                    else:
+                        status = "Accepted"
+                else:
+                    top_name = "None"
+                    top_conf = 0.0
+                    status = f"Discarded: Confidence 0.00 < {self._min_confidence:.2f}"
+
+                print(
+                    f"  [RAW] t={window.t_start:.1f}s | Top: {top_name} | "
+                    f"Confidence: {top_conf:.2f} | Status: {status}"
+                )
+
+                accepted = [
+                    d
+                    for d in raw_detections
+                    if float(d.get("confidence", 0.0)) >= self._min_confidence
+                    and (
+                        not config.classifier.use_location_filter
+                        or d.get("is_predicted_for_location_and_date", True)
+                    )
+                ]
+            else:
+                accepted = raw_detections
+
             detections = [
                 Detection(
                     scientific_name=d["scientific_name"],
                     common_name=d["common_name"],
-                    confidence=d["confidence"],
+                    confidence=float(d["confidence"]),
                     t=window.t_start,
                 )
-                for d in recording.detections
+                for d in accepted
             ]
             # Sort by confidence descending
             detections.sort(key=lambda x: x.confidence, reverse=True)
