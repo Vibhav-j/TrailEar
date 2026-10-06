@@ -1,0 +1,31 @@
+location:
+  lat: 0.0
+  lon: 0.0
+audio:
+  device: null
+  sample_rate: 48000
+  window_s: 3.0
+  hop_s: 1.0
+classifier:
+  backend: birdnet
+  min_confidence: 0.35
+  use_location_filter: true
+detect:
+  announce_threshold: 0.60
+  min_consecutive: 2
+  cooldown_s: 120
+llm:
+  backend: ollama
+  model: qwen2.5:3b
+  host: http://127.0.0.1:11434
+tts:
+  enabled: true
+  voice: en_US-lessac-medium
+pocket_mode:
+  speak_only_new_species: true
+  chime_on_rare: true
+privacy:
+  save_clips: false
+server:
+  host: 127.0.0.1
+  port: 8000

@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trailear"
+version = "0.1.0"
+description = "Offline bird-call companion"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy",
+    "soundfile",
+    "sounddevice",
+    "pydantic",
+    "pyyaml",
+    "fastapi",
+    "uvicorn",
+    "ollama",
+]
+
+[project.optional-dependencies]
+ml = [
+    "birdnetlib",
+    "piper-tts",
+]
+dev = [
+    "pytest",
+    "ruff",
+    "httpx",
+]
+
+[project.scripts]
+trailear = "trailear.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 99
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

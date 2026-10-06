@@ -1,0 +1,1 @@
+// TrailEar PWA application logic
