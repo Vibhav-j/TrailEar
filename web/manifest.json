@@ -1,1 +1,11 @@
-{"name": "TrailEar", "short_name": "TrailEar", "start_url": "/", "display": "standalone"}
+{
+  "name": "TrailEar: Offline Bird-Call Companion",
+  "short_name": "TrailEar",
+  "description": "Identify birds locally and generate field journals with zero network.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#121a16",
+  "theme_color": "#1f5c43",
+  "orientation": "portrait-primary",
+  "icons": []
+}

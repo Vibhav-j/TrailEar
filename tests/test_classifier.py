@@ -78,3 +78,38 @@ class TestBirdNETClassifier:
         if results:
             confidences = [d.confidence for d in results]
             assert confidences == sorted(confidences, reverse=True)
+
+
+class TestLocationFilter:
+    def test_date_to_birdnet_week(self):
+        import datetime
+
+        from trailear.classify.location_filter import date_to_birdnet_week
+
+        # Month 1 (January): day 1 -> week 1
+        assert date_to_birdnet_week(datetime.date(2026, 1, 1)) == 1
+        # Day 7 -> week 1
+        assert date_to_birdnet_week(datetime.date(2026, 1, 7)) == 1
+        # Day 8 -> week 2
+        assert date_to_birdnet_week(datetime.date(2026, 1, 8)) == 2
+        # Day 15 -> week 3
+        assert date_to_birdnet_week(datetime.date(2026, 1, 15)) == 3
+        # Day 25 -> week 4
+        assert date_to_birdnet_week(datetime.date(2026, 1, 25)) == 4
+        # Month 12 (December): day 31 -> week 48
+        assert date_to_birdnet_week(datetime.date(2026, 12, 31)) == 48
+
+    def test_filter_detections_by_species(self):
+        from trailear.classify.location_filter import filter_detections_by_species
+        from trailear.types import Detection
+
+        d1 = Detection("Turdus merula", "Eurasian Blackbird", 0.9, 0.0)
+        d2 = Detection("Oceanodroma leucorhoa", "Leach's Storm Petrel", 0.8, 0.0)
+
+        allowed = {"Turdus merula"}
+        filtered = filter_detections_by_species([d1, d2], allowed)
+        assert len(filtered) == 1
+        assert filtered[0].scientific_name == "Turdus merula"
+
+        # None allowed set passes everything through
+        assert len(filter_detections_by_species([d1, d2], None)) == 2

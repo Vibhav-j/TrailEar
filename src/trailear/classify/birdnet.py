@@ -64,16 +64,23 @@ class BirdNETClassifier(Classifier):
                 pcm = (window.samples * 32767).astype(np.int16)
                 wf.writeframes(pcm.tobytes())
 
+            from trailear.classify.location_filter import date_to_birdnet_week
+
             now = datetime.datetime.now(datetime.UTC)
-            week = now.isocalendar()[1]
+            week = date_to_birdnet_week(now)
+
+            recording_kwargs = {
+                "min_conf": self._min_confidence,
+            }
+            if config.classifier.use_location_filter:
+                recording_kwargs["lat"] = config.location.lat
+                recording_kwargs["lon"] = config.location.lon
+                recording_kwargs["week"] = week
 
             recording = Recording(
                 analyzer,
                 str(tmp_path),
-                lat=config.location.lat,
-                lon=config.location.lon,
-                week=week,
-                min_conf=self._min_confidence,
+                **recording_kwargs,
             )
             recording.analyze()
 

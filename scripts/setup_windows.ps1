@@ -59,9 +59,9 @@ try {
     Write-Step "Fetching models (BirdNET + Piper voice)"
     python scripts/fetch_models.py
 
-    # 6. Seed species DB (skipped for Phase 1)
-    # Write-Step "Seeding species database"
-    # python scripts/seed_species_db.py
+    # 6. Seed species DB
+    Write-Step "Seeding species database"
+    python scripts/seed_species_db.py
 
     # 7. Run tests
     Write-Step "Running tests"

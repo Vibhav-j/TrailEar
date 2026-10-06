@@ -1,1 +1,227 @@
-[]
+[
+  {
+    "scientific_name": "Turdus merula",
+    "common_name": "Eurasian Blackbird",
+    "family": "Turdidae",
+    "habitat": "Woodlands, gardens, hedgerows, and parks",
+    "size_note": "24-25 cm",
+    "call_note": "Melodic, fluted warble; sharp 'chink-chink' alarm call",
+    "rarity": "common"
+  },
+  {
+    "scientific_name": "Erithacus rubecula",
+    "common_name": "European Robin",
+    "family": "Muscicapidae",
+    "habitat": "Gardens, woodland undergrowth, hedgerows",
+    "size_note": "12.5-14 cm",
+    "call_note": "Sweet, rippling warble; clicking 'tic-tic' contact call",
+    "rarity": "common"
+  },
+  {
+    "scientific_name": "Parus major",
+    "common_name": "Great Tit",
+    "family": "Paridae",
+    "habitat": "Deciduous woods, gardens, parks, hedgerows",
+    "size_note": "14 cm",
+    "call_note": "Ringing two-syllable 'tea-cher, tea-cher' song",
+    "rarity": "common"
+  },
+  {
+    "scientific_name": "Cyanistes caeruleus",
+    "common_name": "Eurasian Blue Tit",
+    "family": "Paridae",
+    "habitat": "Broadleaf woodlands, gardens, parks",
+    "size_note": "11.5 cm",
+    "call_note": "High-pitched 'tsee-tsee' followed by a lively trill",
+    "rarity": "common"
+  },
+  {
+    "scientific_name": "Passer domesticus",
+    "common_name": "House Sparrow",
+    "family": "Passeridae",
+    "habitat": "Urban centers, farmlands, suburbs near buildings",
+    "size_note": "14-16 cm",
+    "call_note": "Simple, persistent chirping 'cheep-cheep'",
+    "rarity": "common"
+  },
+  {
+    "scientific_name": "Columba palumbus",
+    "common_name": "Common Wood Pigeon",
+    "family": "Columbidae",
+    "habitat": "Woodlands, agricultural fields, suburban parks",
+    "size_note": "40-42 cm",
+    "call_note": "Deep, five-syllable rhythmic 'coo-COO-coo, coo-coo'",
+    "rarity": "common"
+  },
+  {
+    "scientific_name": "Pica pica",
+    "common_name": "Eurasian Magpie",
+    "family": "Corvidae",
+    "habitat": "Open countryside with trees, suburban gardens, parks",
+    "size_note": "44-46 cm",
+    "call_note": "Harsh, rapid chatter 'chack-chack-chack'",
+    "rarity": "common"
+  },
+  {
+    "scientific_name": "Corvus corone",
+    "common_name": "Carrion Crow",
+    "family": "Corvidae",
+    "habitat": "Farmland, moorland, woodland edges, urban parks",
+    "size_note": "48-52 cm",
+    "call_note": "Harsh, throaty 'kraa-kraa-kraa'",
+    "rarity": "common"
+  },
+  {
+    "scientific_name": "Fringilla coelebs",
+    "common_name": "Common Chaffinch",
+    "family": "Fringillidae",
+    "habitat": "Woodlands, hedgerows, parks, gardens",
+    "size_note": "14-16 cm",
+    "call_note": "Cascading descending song with final flourish; loud 'pink-pink' call",
+    "rarity": "common"
+  },
+  {
+    "scientific_name": "Carduelis carduelis",
+    "common_name": "European Goldfinch",
+    "family": "Fringillidae",
+    "habitat": "Orchards, edges of woods, gardens, weedy wasteland",
+    "size_note": "12-13.5 cm",
+    "call_note": "Liquid, twittering song and characteristic 'tswit-witt-witt' call",
+    "rarity": "common"
+  },
+  {
+    "scientific_name": "Sturnus vulgaris",
+    "common_name": "Common Starling",
+    "family": "Sturnidae",
+    "habitat": "Farmland, towns, city parks, grasslands",
+    "size_note": "20-22 cm",
+    "call_note": "Complex medley of whistles, clicks, rattles, and mimicry",
+    "rarity": "common"
+  },
+  {
+    "scientific_name": "Motacilla alba",
+    "common_name": "White Wagtail",
+    "family": "Motacillidae",
+    "habitat": "Open country near water, paved areas, farms",
+    "size_note": "16.5-19 cm",
+    "call_note": "High, sharp 'chissick' or 'tsic' flight note",
+    "rarity": "common"
+  },
+  {
+    "scientific_name": "Sylvia atricapilla",
+    "common_name": "Eurasian Blackcap",
+    "family": "Sylviidae",
+    "habitat": "Deciduous and mixed woods, scrub, mature gardens",
+    "size_note": "13-15 cm",
+    "call_note": "Rich, flute-like melodic warble; hard 'tac-tac' call",
+    "rarity": "common"
+  },
+  {
+    "scientific_name": "Troglodytes troglodytes",
+    "common_name": "Eurasian Wren",
+    "family": "Troglodytidae",
+    "habitat": "Dense undergrowth, forests, gardens, hedgerows",
+    "size_note": "9-10 cm",
+    "call_note": "Remarkably loud, rapid song with musical trills and metallic chitter",
+    "rarity": "common"
+  },
+  {
+    "scientific_name": "Aegithalos caudatus",
+    "common_name": "Long-tailed Tit",
+    "family": "Aegithalidae",
+    "habitat": "Deciduous scrub, hedgerows, woodland borders",
+    "size_note": "13-15 cm",
+    "call_note": "High, soft 'srih-srih' followed by a sputtering 'churr'",
+    "rarity": "common"
+  },
+  {
+    "scientific_name": "Buteo buteo",
+    "common_name": "Common Buzzard",
+    "family": "Accipitridae",
+    "habitat": "Woodland edges, farmlands, open moorlands",
+    "size_note": "51-57 cm",
+    "call_note": "Plaintive, cat-like mewing 'pee-yaa'",
+    "rarity": "common"
+  },
+  {
+    "scientific_name": "Falco tinnunculus",
+    "common_name": "Common Kestrel",
+    "family": "Falconidae",
+    "habitat": "Open country, farmland, highway verges",
+    "size_note": "32-35 cm",
+    "call_note": "High-pitched, rapid shrill 'kee-kee-kee'",
+    "rarity": "common"
+  },
+  {
+    "scientific_name": "Picus viridis",
+    "common_name": "European Green Woodpecker",
+    "family": "Picidae",
+    "habitat": "Open woods, orchards, meadows, golf courses",
+    "size_note": "31-33 cm",
+    "call_note": "Loud, ringing laughing 'yaffle' call 'klu-klu-kluk'",
+    "rarity": "uncommon"
+  },
+  {
+    "scientific_name": "Dendrocopos major",
+    "common_name": "Great Spotted Woodpecker",
+    "family": "Picidae",
+    "habitat": "Mature woodlands, large parks, copses",
+    "size_note": "23-26 cm",
+    "call_note": "Sharp, explosive 'tchick' call; mechanical territorial drumming",
+    "rarity": "common"
+  },
+  {
+    "scientific_name": "Alcedo atthis",
+    "common_name": "Common Kingfisher",
+    "family": "Alcedinidae",
+    "habitat": "Clean, slow-moving rivers, canals, quiet lakes",
+    "size_note": "16-17 cm",
+    "call_note": "High, piercing whistle 'cheep' in fast flight",
+    "rarity": "uncommon"
+  },
+  {
+    "scientific_name": "Upupa epops",
+    "common_name": "Eurasian Hoopoe",
+    "family": "Upupidae",
+    "habitat": "Open woodland, orchards, dry sunny plains",
+    "size_note": "26-28 cm",
+    "call_note": "Dull, resonant three-note 'oop-oop-oop'",
+    "rarity": "rare"
+  },
+  {
+    "scientific_name": "Tyto alba",
+    "common_name": "Barn Owl",
+    "family": "Tytonidae",
+    "habitat": "Lowland farmland, marshes, grassy fields with barns",
+    "size_note": "33-39 cm",
+    "call_note": "Drawn-out rasping, eerie screech; hissing calls",
+    "rarity": "uncommon"
+  },
+  {
+    "scientific_name": "Strix aluco",
+    "common_name": "Tawny Owl",
+    "family": "Strigidae",
+    "habitat": "Broadleaved and mixed woodlands, large parks",
+    "size_note": "37-43 cm",
+    "call_note": "Familiar 'ke-wick' call and quavering 'hoo... hu_hu_hoo' hoot",
+    "rarity": "common"
+  },
+  {
+    "scientific_name": "Hirundo rustica",
+    "common_name": "Barn Swallow",
+    "family": "Hirundinidae",
+    "habitat": "Open farmland, pastures, near bodies of water and barns",
+    "size_note": "17-19 cm",
+    "call_note": "Rapid, twittering song ending in a dry throat rattle",
+    "rarity": "common"
+  },
+  {
+    "scientific_name": "Apus apus",
+    "common_name": "Common Swift",
+    "family": "Apodidae",
+    "habitat": "Aerial over towns, villages, and countryside; nests in eaves",
+    "size_note": "16-17 cm",
+    "call_note": "Shrill, piercing screams 'swee-ree' by high-speed parties",
+    "rarity": "common"
+  }
+]

@@ -1,1 +1,93 @@
-<!DOCTYPE html><html><head><title>TrailEar</title></head><body><h1>TrailEar PWA</h1></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
+  <meta name="theme-color" content="#1f5c43">
+  <meta name="description" content="Offline bird-call companion">
+  <title>TrailEar</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <div class="logo-group">
+      <h1>TrailEar</h1>
+      <div class="subtitle">Offline Bird-Call Companion</div>
+    </div>
+    <div id="statusBadge" class="status-badge">
+      <span class="status-dot"></span>
+      <span id="statusText">Ready</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- Big Action Button (High Contrast, Readable in Sunlight) -->
+    <div class="action-card">
+      <button id="walkToggleBtn" class="big-btn start" type="button">Start Walk</button>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="live" type="button">Live Feed</button>
+      <button class="tab-btn" data-tab="lifelist" type="button">Life List</button>
+      <button class="tab-btn" data-tab="walks" type="button">Walks & Journals</button>
+    </nav>
+
+    <!-- View 1: Live Feed -->
+    <section id="view-live" class="view-panel active">
+      <div class="feed-header">
+        <h2>Live Detections</h2>
+        <span id="detectionCounter" class="badge-count">0 heard</span>
+      </div>
+      <div id="liveFeedList" class="live-list">
+        <div class="empty-state">
+          No detections yet. Tap <strong>Start Walk</strong> to begin listening for birds.
+        </div>
+      </div>
+    </section>
+
+    <!-- View 2: Life List -->
+    <section id="view-lifelist" class="view-panel">
+      <div class="feed-header">
+        <h2>Life List</h2>
+        <span id="lifeListTotal" class="badge-count">0 species</span>
+      </div>
+      <div id="lifeListContainer">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Common Name</th>
+              <th>Scientific Name</th>
+              <th>Count</th>
+              <th>First Seen</th>
+            </tr>
+          </thead>
+          <tbody id="lifeListBody">
+            <tr>
+              <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 24px;">
+                No birds recorded yet.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- View 3: Walk Summary & Journal -->
+    <section id="view-walks" class="view-panel">
+      <div class="feed-header">
+        <h2>Past Walks</h2>
+        <span id="walksCount" class="badge-count">0 walks</span>
+      </div>
+      <div id="walksList">
+        <div class="empty-state">
+          No completed walks saved yet.
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>

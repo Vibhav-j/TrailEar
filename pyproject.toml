@@ -15,6 +15,7 @@ dependencies = [
     "pyyaml",
     "fastapi",
     "uvicorn",
+    "websockets",
     "ollama",
 ]
 

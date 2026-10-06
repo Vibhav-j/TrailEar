@@ -2,13 +2,19 @@
 
 from __future__ import annotations
 
+import logging
+import queue
+import threading
 from collections.abc import Generator
 from pathlib import Path
 
 import numpy as np
 import soundfile as sf
 
+from trailear.config import config
 from trailear.types import Window
+
+logger = logging.getLogger(__name__)
 
 
 def _resample_mono(samples: np.ndarray, orig_sr: int, target_sr: int) -> np.ndarray:
@@ -60,24 +66,84 @@ class FileSource:
 class MicSource:
     """Live microphone capture using sounddevice.
 
-    Full implementation deferred to Phase 3.
+    Yields 3 s windows with 1 s hop at 48 kHz mono.
+    Device is selectable from config.audio.device or explicit argument.
     """
 
     def __init__(
         self,
         device: int | None = None,
-        sample_rate: int = 48000,
-        window_s: float = 3.0,
-        hop_s: float = 1.0,
+        sample_rate: int | None = None,
+        window_s: float | None = None,
+        hop_s: float | None = None,
     ) -> None:
-        self.device = device
-        self.sample_rate = sample_rate
-        self.window_s = window_s
-        self.hop_s = hop_s
+        self.device = device if device is not None else config.audio.device
+        self.sample_rate = sample_rate if sample_rate is not None else config.audio.sample_rate
+        self.window_s = window_s if window_s is not None else config.audio.window_s
+        self.hop_s = hop_s if hop_s is not None else config.audio.hop_s
+        self._stop_event = threading.Event()
+
+    def stop(self) -> None:
+        """Signal the capture loop to stop."""
+        self._stop_event.set()
 
     def windows(self) -> Generator[Window, None, None]:
-        """Yield overlapping windows from the microphone."""
-        raise NotImplementedError("MicSource will be implemented in Phase 3")
+        """Yield overlapping audio windows from the live microphone stream."""
+        import sounddevice as sd
+
+        self._stop_event.clear()
+        audio_q: queue.Queue[np.ndarray | None] = queue.Queue()
+
+        def audio_callback(indata, frames, time_info, status):
+            if status:
+                logger.warning("Audio input status flag: %s", status)
+            audio_q.put(indata.copy())
+
+        try:
+            stream = sd.InputStream(
+                device=self.device,
+                channels=1,
+                samplerate=self.sample_rate,
+                dtype="float32",
+                callback=audio_callback,
+            )
+        except Exception as err:
+            dev_str = f"index {self.device}" if self.device is not None else "system default"
+            msg = (
+                f"Failed to open audio input device ({dev_str}): {err}. "
+                "Check audio.device in config.yaml or run 'python -m trailear devices' to list valid devices."
+            )
+            logger.error(msg)
+            raise RuntimeError(msg) from err
+
+        window_len = int(self.window_s * self.sample_rate)
+        hop_len = int(self.hop_s * self.sample_rate)
+        buffer = np.zeros(0, dtype=np.float32)
+        t_start = 0.0
+
+        with stream:
+            while not self._stop_event.is_set():
+                try:
+                    chunk = audio_q.get(timeout=0.2)
+                except queue.Empty:
+                    continue
+                if chunk is None:
+                    break
+
+                mono_chunk = chunk.squeeze()
+                if mono_chunk.ndim > 1:
+                    mono_chunk = mono_chunk.mean(axis=1)
+                buffer = np.concatenate([buffer, mono_chunk])
+
+                while len(buffer) >= window_len:
+                    window_samples = buffer[:window_len]
+                    yield Window(
+                        samples=window_samples,
+                        sample_rate=self.sample_rate,
+                        t_start=t_start,
+                    )
+                    buffer = buffer[hop_len:]
+                    t_start += self.hop_s
 
 
 def list_devices() -> list[dict]:
