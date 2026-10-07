@@ -154,3 +154,18 @@ class TestAPIEndpoints:
         assert data["use_location_filter"] is True
         assert data["latitude"] == 51.5074
         assert data["longitude"] == -0.1278
+
+    def test_regenerate_journal(self, client):
+        resp = client.post("/api/journal/1")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "ok"
+        assert data["walk_id"] == 1
+        assert "journal" in data
+        assert isinstance(data["journal"], str)
+        assert len(data["journal"]) > 0
+
+        # Verify walk now has updated journal
+        resp_walk = client.get("/api/walks/1")
+        assert resp_walk.status_code == 200
+        assert resp_walk.json()["journal"] == data["journal"]

@@ -42,7 +42,7 @@ def generate_and_save_journal(
             "I took a quiet walk through nature today, taking time to tune into the "
             "ambient sounds of the landscape, though no bird calls were distinctly identified."
         )
-        end_walk(walk_id, journal=empty_journal, db_path=db_path)
+        end_walk(walk_id, ended_at=walk.ended_at, journal=empty_journal, db_path=db_path)
         return empty_journal
 
     # Aggregate sightings by species and attach facts from species.sqlite
@@ -78,5 +78,5 @@ def generate_and_save_journal(
         db_path=species_db_path,
     )
 
-    end_walk(walk_id, journal=journal_text, db_path=db_path)
+    end_walk(walk_id, ended_at=walk.ended_at, journal=journal_text, db_path=db_path)
     return journal_text

@@ -1,165 +1,412 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
-  <meta name="theme-color" content="#1f5c43">
-  <meta name="description" content="Offline bird-call companion">
-  <title>TrailEar</title>
+  <meta name="theme-color" content="#0c120f">
+  <meta name="description" content="Offline tactical bioacoustic bird-call companion">
+  <title>TrailEar • Tactical Bioacoustic Station</title>
+
+  <!-- PWA Manifest -->
   <link rel="manifest" href="/manifest.json">
+
+  <!-- Google Fonts: Inter and JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            darkbg: '#0c120f',
+            cardsurface: 'rgba(21, 34, 28, 0.8)',
+            cardborder: '#23382e',
+            emerald: {
+              500: '#22c55e',
+              600: '#16a34a',
+            },
+            sage: '#a7f3d0',
+          },
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          boxShadow: {
+            'glow-emerald': '0 0 24px -2px rgba(34, 197, 94, 0.4)',
+            'glow-switch': '0 0 12px 0 rgba(34, 197, 94, 0.6)',
+            'glow-red': '0 0 24px -2px rgba(239, 68, 68, 0.5)',
+            'card-glass': '0 10px 30px -5px rgba(0, 0, 0, 0.5)',
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Custom Stylesheet -->
   <link rel="stylesheet" href="/style.css">
 </head>
-<body>
-  <header>
-    <div class="logo-group">
-      <h1>TrailEar</h1>
-      <div class="subtitle">Offline Bird-Call Companion</div>
-    </div>
-    <div class="header-actions">
-      <button id="headerSettingsBtn" class="header-btn" type="button" title="Location & Settings" aria-label="Settings">
-        ⚙️ <span class="btn-text">Settings</span>
-      </button>
-      <div id="statusBadge" class="status-badge">
-        <span class="status-dot"></span>
-        <span id="statusText">Ready</span>
-      </div>
-    </div>
-  </header>
+<body class="bg-[#0c120f] text-[#f8fafc] min-h-screen font-sans antialiased selection:bg-emerald-500/30 selection:text-emerald-200">
+  
+  <!-- Subtle Background Ambient Light -->
+  <div class="fixed inset-0 pointer-events-none overflow-hidden z-0">
+    <div class="absolute -top-32 left-1/2 -translate-x-1/2 w-[650px] h-[320px] bg-emerald-500/10 blur-[130px] rounded-full"></div>
+    <div class="absolute top-1/2 -left-40 w-[400px] h-[400px] bg-emerald-950/15 blur-[120px] rounded-full"></div>
+    <div class="absolute bottom-10 -right-40 w-[450px] h-[450px] bg-[#1a382b]/15 blur-[140px] rounded-full"></div>
+  </div>
 
-  <main>
-    <!-- Location & Prior Summary Bar -->
-    <div class="location-bar">
-      <div class="location-info">
-        <span class="location-pin">📍</span>
-        <span id="locationSummaryText" class="location-summary">Location: 0.0000, 0.0000 (Filter ON)</span>
-      </div>
-      <div class="location-bar-actions">
-        <button id="quickLocBtn" class="loc-action-btn" type="button" title="Fetch GPS Location">📍 GPS</button>
-        <button id="openSettingsBtn" class="loc-action-btn" type="button" title="Configure Settings">Edit</button>
-      </div>
-    </div>
-
-    <!-- Big Action Button (High Contrast, Readable in Sunlight) -->
-    <div class="action-card">
-      <button id="walkToggleBtn" class="big-btn start" type="button">Start Walk</button>
-    </div>
-
-    <!-- Navigation Tabs -->
-    <nav class="tab-nav">
-      <button class="tab-btn active" data-tab="live" type="button">Live Feed</button>
-      <button class="tab-btn" data-tab="lifelist" type="button">Life List</button>
-      <button class="tab-btn" data-tab="walks" type="button">Walks & Journals</button>
-    </nav>
-
-    <!-- View 1: Live Feed -->
-    <section id="view-live" class="view-panel active">
-      <div class="feed-header">
-        <h2>Live Detections</h2>
-        <span id="detectionCounter" class="badge-count">0 heard</span>
-      </div>
-      <div id="liveFeedList" class="live-list">
-        <div class="empty-state">
-          No detections yet. Tap <strong>Start Walk</strong> to begin listening for birds.
+  <!-- Main App Shell -->
+  <div class="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col min-h-screen">
+    
+    <!-- Header Bar -->
+    <header class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-[#23382e]/80">
+      <div class="flex items-center gap-3.5">
+        <!-- Brand Logo with animated equalizer badge -->
+        <div class="relative flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-emerald-950/80 border border-emerald-500/40 shadow-glow-emerald">
+          <i data-lucide="radio" class="w-6 h-6 text-emerald-400"></i>
+          <!-- Animated Audio Indicator Dot -->
+          <span class="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-[#0c120f]"></span>
+          </span>
         </div>
-      </div>
-    </section>
-
-    <!-- View 2: Life List -->
-    <section id="view-lifelist" class="view-panel">
-      <div class="feed-header">
-        <h2>Life List</h2>
-        <span id="lifeListTotal" class="badge-count">0 species</span>
-      </div>
-      <div id="lifeListContainer">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Common Name</th>
-              <th>Scientific Name</th>
-              <th>Count</th>
-              <th>First Seen</th>
-            </tr>
-          </thead>
-          <tbody id="lifeListBody">
-            <tr>
-              <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 24px;">
-                No birds recorded yet.
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- View 3: Walk Summary & Journal -->
-    <section id="view-walks" class="view-panel">
-      <div class="feed-header">
-        <h2>Past Walks</h2>
-        <span id="walksCount" class="badge-count">0 walks</span>
-      </div>
-      <div id="walksList">
-        <div class="empty-state">
-          No completed walks saved yet.
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <!-- Settings & Location Modal -->
-  <div id="settingsModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h2 id="settingsModalTitle">Settings & Location Prior</h2>
-        <button id="closeSettingsBtn" class="modal-close-btn" type="button" aria-label="Close settings">&times;</button>
-      </div>
-      <form id="settingsForm" class="settings-form">
-        <!-- Toggle Switch for Regional Location Filter -->
-        <div class="form-group toggle-group">
-          <div class="toggle-text">
-            <label for="locationFilterToggle" class="toggle-label">Regional Location Prior</label>
-            <div class="toggle-desc">Filters candidate detections against BirdNET's 48-week geographic species distribution</div>
+        <div>
+          <div class="flex items-center gap-2.5">
+            <h1 class="text-2xl font-extrabold tracking-tight text-white flex items-center gap-1.5">
+              TrailEar
+            </h1>
+            <!-- Mini Equalizer Bars in Header -->
+            <div class="flex items-end gap-0.5 h-3.5 px-1 py-0.5 rounded bg-emerald-950/80 border border-emerald-800/40">
+              <span class="w-0.5 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
+              <span class="w-0.5 h-3.5 bg-emerald-400 rounded-full animate-pulse" style="animation-delay: 0.15s"></span>
+              <span class="w-0.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" style="animation-delay: 0.3s"></span>
+              <span class="w-0.5 h-2.5 bg-emerald-400 rounded-full animate-pulse" style="animation-delay: 0.45s"></span>
+            </div>
           </div>
-          <label class="switch">
-            <input type="checkbox" id="locationFilterToggle" checked>
-            <span class="slider"></span>
-          </label>
+          <p class="text-xs font-medium text-emerald-400/80 tracking-wide">
+            Tactical Bioacoustic Station • Edge Species Classifier
+          </p>
         </div>
+      </div>
 
-        <!-- Coordinates Inputs -->
-        <div class="form-row">
-          <div class="form-group">
-            <label for="latitudeInput">Latitude (&deg;N)</label>
-            <input type="number" step="any" id="latitudeInput" name="latitude" placeholder="e.g. 42.3601" required>
+      <!-- Header Actions: Offline Status Tag & Settings Drawer Button -->
+      <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+        <!-- Settings Drawer Toggle Button -->
+        <button id="headerSettingsBtn" class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium bg-[#15221c]/90 hover:bg-[#1d3126] text-slate-200 border border-[#23382e] hover:border-emerald-500/50 transition-all duration-200 shadow-sm" type="button" title="Open Settings Drawer">
+          <i data-lucide="sliders-horizontal" class="w-4 h-4 text-emerald-400"></i>
+          <span class="hidden xs:inline">Settings Drawer</span>
+        </button>
+
+        <!-- Connected (Offline) Status Tag -->
+        <div id="statusBadge" class="status-badge flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-mono font-semibold bg-[#15221c]/90 border border-[#23382e] text-slate-300">
+          <span class="status-dot w-2 h-2 rounded-full bg-emerald-500 transition-colors"></span>
+          <span id="statusText">Connected (Offline)</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Collapsible Settings Drawer -->
+    <div id="settingsModal" class="hidden transition-all duration-300 my-4">
+      <div class="bg-[#15221c]/95 border border-[#23382e] backdrop-blur-xl rounded-2xl p-5 sm:p-6 shadow-card-glass relative">
+        <div class="flex items-center justify-between pb-4 border-b border-[#23382e]">
+          <div class="flex items-center gap-2.5">
+            <div class="p-1.5 rounded-lg bg-emerald-950 text-emerald-400 border border-emerald-800/40">
+              <i data-lucide="sliders" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h2 id="settingsModalTitle" class="text-base font-semibold text-white">Sensor &amp; Prior Calibration</h2>
+              <p class="text-xs text-slate-400">Manage regional distribution filters and detection sensitivity</p>
+            </div>
           </div>
-          <div class="form-group">
-            <label for="longitudeInput">Longitude (&deg;E)</label>
-            <input type="number" step="any" id="longitudeInput" name="longitude" placeholder="e.g. -71.0589" required>
-          </div>
-        </div>
-
-        <!-- Min Confidence Threshold -->
-        <div class="form-group">
-          <label for="minConfidenceInput">Min Confidence Threshold</label>
-          <input type="number" step="0.05" min="0.05" max="1.0" id="minConfidenceInput" name="min_confidence" placeholder="0.35" required>
-          <div class="input-desc">Candidate predictions below this confidence score are discarded</div>
-        </div>
-
-        <!-- Modal Actions -->
-        <div class="modal-actions">
-          <button id="fetchLocationBtn" class="btn btn-gps" type="button">
-            📍 Fetch Current Location
-          </button>
-          <button id="saveSettingsBtn" class="btn btn-save" type="submit">
-            Save Settings
+          <button id="closeSettingsBtn" type="button" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-[#1f332a] transition-colors" aria-label="Close settings">
+            <i data-lucide="x" class="w-5 h-5"></i>
           </button>
         </div>
-      </form>
+
+        <form id="settingsForm" class="mt-5 space-y-5">
+          <!-- Regional Location Filter Toggle -->
+          <div class="flex items-center justify-between p-3.5 rounded-xl bg-[#0e1713]/70 border border-[#1e3227]">
+            <div>
+              <label for="locationFilterToggle" class="text-sm font-medium text-slate-200 block">Regional Location Filter Prior</label>
+              <p class="text-xs text-slate-400 mt-0.5">Filter candidate species against BirdNET's 48-week regional occurrence distribution</p>
+            </div>
+            <label class="switch relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="locationFilterToggle" class="sr-only peer" checked>
+              <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 peer-checked:shadow-glow-switch"></div>
+            </label>
+          </div>
+
+          <!-- Coordinates Inputs Row -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="latitudeInput" class="text-xs font-mono text-emerald-400/80 uppercase tracking-wider block mb-1.5">Latitude (°N)</label>
+              <div class="relative">
+                <i data-lucide="compass" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input type="number" step="any" id="latitudeInput" name="latitude" placeholder="42.3601" class="w-full bg-[#0e1713] border border-[#23382e] focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 rounded-xl py-2 pl-9 pr-3 text-sm font-mono text-slate-100 placeholder-slate-600 outline-none transition-all">
+              </div>
+            </div>
+            <div>
+              <label for="longitudeInput" class="text-xs font-mono text-emerald-400/80 uppercase tracking-wider block mb-1.5">Longitude (°E)</label>
+              <div class="relative">
+                <i data-lucide="compass" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input type="number" step="any" id="longitudeInput" name="longitude" placeholder="-71.0589" class="w-full bg-[#0e1713] border border-[#23382e] focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 rounded-xl py-2 pl-9 pr-3 text-sm font-mono text-slate-100 placeholder-slate-600 outline-none transition-all">
+              </div>
+            </div>
+          </div>
+
+          <!-- Min Confidence Threshold -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label for="minConfidenceInput" class="text-xs font-mono text-emerald-400/80 uppercase tracking-wider">Min Confidence Threshold</label>
+              <span id="modalConfidenceDisplay" class="text-xs font-mono text-emerald-400 font-bold">35%</span>
+            </div>
+            <input type="number" step="0.05" min="0.05" max="1.0" id="minConfidenceInput" name="min_confidence" placeholder="0.35" class="w-full bg-[#0e1713] border border-[#23382e] focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 rounded-xl py-2 px-3 text-sm font-mono text-slate-100 placeholder-slate-600 outline-none transition-all">
+            <p class="text-[11px] text-slate-400 mt-1">Species predictions below this confidence are filtered out</p>
+          </div>
+
+          <!-- Drawer Actions -->
+          <div class="flex flex-col sm:flex-row items-center justify-end gap-3 pt-3 border-t border-[#23382e]">
+            <button id="fetchLocationBtn" class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-medium bg-[#111e17] hover:bg-[#1a2f24] text-emerald-300 border border-emerald-800/50 transition-colors" type="button">
+              <i data-lucide="map-pin" class="w-3.5 h-3.5"></i>
+              <span>Fetch GPS Coordinates</span>
+            </button>
+            <button id="saveSettingsBtn" class="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-950 transition-colors" type="submit">
+              <i data-lucide="check" class="w-3.5 h-3.5"></i>
+              <span>Save &amp; Apply</span>
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
+
+    <!-- Main Content Flow -->
+    <main class="flex-1 flex flex-col gap-6 pt-6">
+
+      <!-- Sensor Controls Card -->
+      <div id="settings-control-bar" class="settings-control-bar bg-[#15221c]/80 border border-[#23382e] backdrop-blur-md rounded-2xl p-4 sm:p-5 shadow-card-glass transition-all">
+        <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+          
+          <!-- Control 1: Location Filter Toggle switch with active glow -->
+          <div class="flex items-center justify-between sm:justify-start gap-3.5 py-1">
+            <div class="flex items-center gap-2">
+              <div class="w-2 h-2 rounded-full bg-emerald-500 shadow-glow-switch"></div>
+              <label for="location-filter-toggle" class="text-xs font-semibold text-slate-200 cursor-pointer select-none">
+                Location Filter
+              </label>
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="switch relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="location-filter-toggle" class="sr-only peer" checked>
+                <div class="w-10 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500 peer-checked:shadow-glow-switch"></div>
+              </label>
+              <span id="filter-status-text" class="status-indicator px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-700/50">ON</span>
+            </div>
+          </div>
+
+          <!-- Divider -->
+          <div class="hidden lg:block w-px h-8 bg-[#23382e]"></div>
+
+          <!-- Control 2: Latitude and Longitude input boxes with emerald focus rings -->
+          <div class="flex items-center gap-2.5 flex-1 max-w-md">
+            <div class="relative flex-1">
+              <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-mono text-emerald-400/70 font-bold">LAT</span>
+              <input type="number" step="any" id="latitude-input" placeholder="0.0000" aria-label="Latitude" class="w-full bg-[#0c120f] border border-[#23382e] focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30 rounded-xl py-1.5 pl-11 pr-2 text-xs font-mono text-[#a7f3d0] placeholder-slate-600 outline-none transition-all shadow-inner">
+            </div>
+            <div class="relative flex-1">
+              <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-mono text-emerald-400/70 font-bold">LON</span>
+              <input type="number" step="any" id="longitude-input" placeholder="0.0000" aria-label="Longitude" class="w-full bg-[#0c120f] border border-[#23382e] focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30 rounded-xl py-1.5 pl-11 pr-2 text-xs font-mono text-[#a7f3d0] placeholder-slate-600 outline-none transition-all shadow-inner">
+            </div>
+            <!-- "Use My Location" GPS button with pin icon -->
+            <button id="use-my-location-btn" class="btn-location flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-[#111e17] hover:bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 hover:border-emerald-500/60 transition-all shrink-0 shadow-sm" type="button" title="Fetch current GPS location">
+              <i data-lucide="map-pin" class="w-3.5 h-3.5 text-emerald-400"></i>
+              <span class="hidden sm:inline">Use My Location</span>
+            </button>
+          </div>
+
+          <!-- Divider -->
+          <div class="hidden lg:block w-px h-8 bg-[#23382e]"></div>
+
+          <!-- Control 3: Min Confidence slider with live percentage display -->
+          <div class="flex items-center gap-3">
+            <div class="flex flex-col">
+              <div class="flex items-center justify-between text-[11px] mb-1">
+                <span class="text-slate-400 font-medium">Confidence:</span>
+                <span id="confidenceValueDisplay" class="font-mono text-emerald-400 font-bold ml-1">35%</span>
+              </div>
+              <input type="range" min="0.05" max="1.0" step="0.05" value="0.35" id="minConfidenceSlider" class="accent-emerald-500 w-28 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Action Hero Section: START WALK button & Live Audio Visualizer -->
+      <div class="action-card flex flex-col items-center justify-center p-6 sm:p-8 rounded-2xl bg-[#15221c]/70 border border-[#23382e] backdrop-blur-md relative overflow-hidden shadow-card-glass">
+        <!-- Ambient radial glow behind the button -->
+        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div class="w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl"></div>
+        </div>
+
+        <!-- Prominent START WALK Button (changes to pulsing red STOP WALK) -->
+        <button id="start-walk-btn" class="big-btn start relative z-10 group flex items-center justify-center gap-3 w-full sm:w-auto sm:min-w-[280px] px-8 py-5 rounded-2xl font-extrabold text-base tracking-wider uppercase text-white shadow-glow-emerald transition-all duration-300 transform active:scale-95" type="button">
+          <i data-lucide="play" class="w-5 h-5 fill-current"></i>
+          <span>Start Walk</span>
+        </button>
+
+        <!-- Live Audio Visualizer: Equalizer-style audio wave bars active during live recording -->
+        <div class="mt-6 w-full max-w-lg flex flex-col items-center">
+          <div id="audioVisualizer" class="audio-visualizer flex items-center justify-center gap-1.5 h-10 w-full py-2 px-4 rounded-xl bg-[#0c120f]/80 border border-[#1e3227] transition-all">
+            <span class="vbar"></span>
+            <span class="vbar"></span>
+            <span class="vbar"></span>
+            <span class="vbar"></span>
+            <span class="vbar"></span>
+            <span class="vbar"></span>
+            <span class="vbar"></span>
+            <span class="vbar"></span>
+            <span class="vbar"></span>
+            <span class="vbar"></span>
+            <span class="vbar"></span>
+            <span class="vbar"></span>
+            <span class="vbar"></span>
+            <span class="vbar"></span>
+            <span class="vbar"></span>
+            <span class="vbar"></span>
+            <span class="vbar"></span>
+            <span class="vbar"></span>
+            <span class="vbar"></span>
+            <span class="vbar"></span>
+          </div>
+          <div class="flex items-center gap-2 mt-2 text-[11px] font-mono text-emerald-400/70 uppercase tracking-wider">
+            <span id="visualizerDot" class="w-2 h-2 rounded-full bg-slate-600"></span>
+            <span id="visualizerStatusText">Bioacoustic Stream Inactive</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs: Styled Pill Buttons for [Live Feed], [Life List], and [Walks & Journals] -->
+      <nav class="tab-nav flex p-1.5 bg-[#101b16] rounded-2xl border border-[#1e3227] shadow-inner gap-1">
+        <button class="tab-btn active flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200" data-tab="live" type="button">
+          <i data-lucide="activity" class="w-4 h-4"></i>
+          <span>Live Feed</span>
+        </button>
+        <button class="tab-btn flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold text-slate-400 hover:text-slate-200 transition-all duration-200" data-tab="lifelist" type="button">
+          <i data-lucide="feather" class="w-4 h-4"></i>
+          <span>Life List</span>
+        </button>
+        <button class="tab-btn flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold text-slate-400 hover:text-slate-200 transition-all duration-200" data-tab="walks" type="button">
+          <i data-lucide="book-open" class="w-4 h-4"></i>
+          <span>Walks &amp; Journals</span>
+        </button>
+      </nav>
+
+      <!-- View Panels -->
+      <div class="flex-1">
+
+        <!-- View 1: Live Feed -->
+        <section id="view-live" class="view-panel active space-y-4">
+          <div class="feed-header flex items-center justify-between pb-2 border-b border-[#23382e]">
+            <div class="flex items-center gap-2">
+              <h2 class="text-lg font-bold text-white tracking-tight">Live Detections</h2>
+              <span class="text-xs text-slate-400">(Auto-Announced)</span>
+            </div>
+            <span id="detectionCounter" class="badge-count px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-800/60">
+              0 heard
+            </span>
+          </div>
+          <div id="liveFeedList" class="live-list space-y-3">
+            <div class="empty-state flex flex-col items-center justify-center py-16 px-4 rounded-2xl bg-[#15221c]/40 border border-dashed border-[#23382e] text-center">
+              <div class="w-12 h-12 rounded-full bg-emerald-950/50 flex items-center justify-center text-emerald-400 mb-3 border border-emerald-800/30">
+                <i data-lucide="ear" class="w-6 h-6"></i>
+              </div>
+              <p class="text-sm font-medium text-slate-300">No detections registered yet.</p>
+              <p class="text-xs text-slate-500 mt-1">Tap <strong class="text-emerald-400">Start Walk</strong> to begin continuous listening for avian calls.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- View 2: Life List -->
+        <section id="view-lifelist" class="view-panel hidden space-y-4">
+          <div class="feed-header flex items-center justify-between pb-2 border-b border-[#23382e]">
+            <div>
+              <h2 class="text-lg font-bold text-white tracking-tight">Species Life List</h2>
+              <p class="text-xs text-slate-400">All unique species identified across recorded walks</p>
+            </div>
+            <span id="lifeListTotal" class="badge-count px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-800/60">
+              0 species
+            </span>
+          </div>
+          <div id="lifeListContainer" class="bg-[#15221c]/80 border border-[#23382e] rounded-2xl overflow-hidden shadow-card-glass">
+            <div class="overflow-x-auto">
+              <table class="data-table w-full text-left text-sm">
+                <thead class="bg-[#101b16] text-[11px] font-mono text-emerald-400/80 uppercase tracking-wider border-b border-[#23382e]">
+                  <tr>
+                    <th class="py-3 px-4">Common Name</th>
+                    <th class="py-3 px-4">Scientific Name</th>
+                    <th class="py-3 px-4">Count</th>
+                    <th class="py-3 px-4">First Heard</th>
+                  </tr>
+                </thead>
+                <tbody id="lifeListBody" class="divide-y divide-[#23382e]/60 text-slate-200">
+                  <tr>
+                    <td colspan="4" class="text-center text-slate-500 py-12">
+                      No birds recorded yet.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- View 3: Walk Summary & Journal -->
+        <section id="view-walks" class="view-panel hidden space-y-4">
+          <div class="feed-header flex items-center justify-between pb-2 border-b border-[#23382e]">
+            <div>
+              <h2 class="text-lg font-bold text-white tracking-tight">Past Walks &amp; Journals</h2>
+              <p class="text-xs text-slate-400">Synthesized acoustic field logs and observations</p>
+            </div>
+            <span id="walksCount" class="badge-count px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-800/60">
+              0 walks
+            </span>
+          </div>
+          <div id="walksList" class="space-y-4">
+            <div class="empty-state flex flex-col items-center justify-center py-16 px-4 rounded-2xl bg-[#15221c]/40 border border-dashed border-[#23382e] text-center">
+              <div class="w-12 h-12 rounded-full bg-emerald-950/50 flex items-center justify-center text-emerald-400 mb-3 border border-emerald-800/30">
+                <i data-lucide="book" class="w-6 h-6"></i>
+              </div>
+              <p class="text-sm font-medium text-slate-300">No completed walks saved yet.</p>
+              <p class="text-xs text-slate-500 mt-1">Complete a walk session to automatically generate an AI field journal.</p>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-12 pt-6 border-t border-[#23382e]/60 text-center text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+        <span>TrailEar Autonomous Bioacoustic Edge Node</span>
+      </div>
+      <div class="font-mono text-[11px] text-slate-600">
+        100% Offline • BirdNET TFLite • Local LLM Journal
+      </div>
+    </footer>
   </div>
 
   <!-- Toast Container -->
-  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+  <div id="toastContainer" class="toast-container fixed bottom-6 right-6 z-50 flex flex-col gap-2.5 max-w-sm pointer-events-none" aria-live="polite"></div>
 
+  <!-- App Logic -->
   <script src="/app.js" defer></script>
 </body>
 </html>

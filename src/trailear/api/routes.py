@@ -161,6 +161,47 @@ def api_get_walk(walk_id: int) -> dict:
     return walk.to_dict()
 
 
+class JournalRegenerateRequest(BaseModel):
+    """Optional payload for regenerating field journal."""
+
+    force: bool = True
+
+
+@router.post("/api/journal/{walk_id}")
+def api_regenerate_journal(
+    walk_id: int, payload: JournalRegenerateRequest | None = None
+) -> dict:
+    """Generate or regenerate field journal for a walk, overwriting any existing journal."""
+    from trailear.llm.journal import generate_and_save_journal
+
+    walk = get_walk(walk_id)
+    if walk is None:
+        raise HTTPException(status_code=404, detail=f"Walk #{walk_id} not found")
+
+    try:
+        journal_text = generate_and_save_journal(walk_id)
+        return {
+            "walk_id": walk_id,
+            "journal": journal_text,
+            "status": "ok",
+        }
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Failed to generate journal for walk #%d: %s", walk_id, exc)
+        raise HTTPException(status_code=500, detail=f"Failed to generate journal: {exc}")
+
+
+@router.get("/api/journal/{walk_id}")
+def api_get_journal(walk_id: int) -> dict:
+    """Get field journal for a specific walk."""
+    walk = get_walk(walk_id)
+    if walk is None:
+        raise HTTPException(status_code=404, detail=f"Walk #{walk_id} not found")
+    return {
+        "walk_id": walk_id,
+        "journal": walk.journal,
+    }
+
+
 @router.get("/api/lifelist")
 def api_lifelist() -> list[dict]:
     """Retrieve all species ever detected with first-seen timestamp and count."""
